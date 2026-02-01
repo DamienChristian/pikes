@@ -1,0 +1,45 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Apple Touch Icon 180x180 -->
+  <rect width="180" height="180" fill="#6366f1"/>
+  
+  <!-- Calendar body -->
+  <rect x="34" y="39" width="112" height="104" rx="9" fill="white"/>
+  
+  <!-- Calendar header -->
+  <rect x="34" y="39" width="112" height="26" rx="9" fill="#818cf8"/>
+  <rect x="34" y="58" width="112" height="7" fill="#818cf8"/>
+  
+  <!-- Binding rings -->
+  <circle cx="62" cy="39" r="5.5" fill="#6366f1"/>
+  <circle cx="62" cy="39" r="2.75" fill="white"/>
+  <circle cx="118" cy="39" r="5.5" fill="#6366f1"/>
+  <circle cx="118" cy="39" r="2.75" fill="white"/>
+  
+  <!-- Calendar dates -->
+  <g fill="#6366f1" opacity="0.4">
+    <circle cx="48" cy="84" r="3.5"/>
+    <circle cx="64" cy="84" r="3.5"/>
+    <circle cx="81" cy="84" r="3.5"/>
+    <circle cx="98" cy="84" r="3.5"/>
+    <circle cx="115" cy="84" r="3.5"/>
+    <circle cx="132" cy="84" r="3.5"/>
+    
+    <circle cx="48" cy="101" r="3.5"/>
+    <circle cx="64" cy="101" r="3.5"/>
+    <circle cx="81" cy="101" r="3.5"/>
+    <circle cx="98" cy="101" r="3.5"/>
+    <circle cx="115" cy="101" r="3.5"/>
+    <circle cx="132" cy="101" r="3.5"/>
+    
+    <circle cx="48" cy="118" r="3.5"/>
+    <circle cx="64" cy="118" r="3.5"/>
+    <circle cx="81" cy="118" r="3.5"/>
+    <circle cx="98" cy="118" r="3.5"/>
+    <circle cx="115" cy="118" r="3.5"/>
+    <circle cx="132" cy="118" r="3.5"/>
+  </g>
+  
+  <!-- Highlighted date -->
+  <circle cx="98" cy="101" r="7.5" fill="#6366f1"/>
+  <circle cx="98" cy="101" r="3.5" fill="white"/>
+</svg>

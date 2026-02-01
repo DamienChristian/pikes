@@ -1,0 +1,45 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Calendar body -->
+  <rect x="64" y="96" width="384" height="352" rx="32" fill="#6366f1"/>
+  
+  <!-- Calendar header bar -->
+  <rect x="64" y="96" width="384" height="88" rx="32" fill="#818cf8"/>
+  <rect x="64" y="152" width="384" height="32" fill="#818cf8"/>
+  
+  <!-- Top binding rings -->
+  <circle cx="176" cy="96" r="20" fill="white"/>
+  <circle cx="176" cy="96" r="10" fill="#6366f1"/>
+  <circle cx="336" cy="96" r="20" fill="white"/>
+  <circle cx="336" cy="96" r="10" fill="#6366f1"/>
+  
+  <!-- Calendar grid (representing dates) -->
+  <g fill="white" opacity="0.5">
+    <!-- Row 1 -->
+    <circle cx="112" cy="232" r="12"/>
+    <circle cx="176" cy="232" r="12"/>
+    <circle cx="240" cy="232" r="12"/>
+    <circle cx="304" cy="232" r="12"/>
+    <circle cx="368" cy="232" r="12"/>
+    <circle cx="400" cy="232" r="12"/>
+    
+    <!-- Row 2 -->
+    <circle cx="112" cy="296" r="12"/>
+    <circle cx="176" cy="296" r="12"/>
+    <circle cx="240" cy="296" r="12"/>
+    <circle cx="304" cy="296" r="12"/>
+    <circle cx="368" cy="296" r="12"/>
+    <circle cx="400" cy="296" r="12"/>
+    
+    <!-- Row 3 -->
+    <circle cx="112" cy="360" r="12"/>
+    <circle cx="176" cy="360" r="12"/>
+    <circle cx="240" cy="360" r="12"/>
+    <circle cx="304" cy="360" r="12"/>
+    <circle cx="368" cy="360" r="12"/>
+    <circle cx="400" cy="360" r="12"/>
+  </g>
+  
+  <!-- Highlighted date (today) -->
+  <circle cx="304" cy="296" r="28" fill="white"/>
+  <circle cx="304" cy="296" r="12" fill="#6366f1"/>
+</svg>

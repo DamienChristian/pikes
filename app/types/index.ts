@@ -35,9 +35,19 @@ export interface UpdateEventInput extends Partial<CreateEventInput> {
 export interface User {
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface SessionUser {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  sessionId: string;
 }
 
 /**

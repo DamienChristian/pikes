@@ -1,0 +1,45 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- PWA Icon 192x192 -->
+  <rect width="192" height="192" rx="32" fill="#6366f1"/>
+  
+  <!-- Calendar body -->
+  <rect x="36" y="42" width="120" height="110" rx="10" fill="white"/>
+  
+  <!-- Calendar header -->
+  <rect x="36" y="42" width="120" height="28" rx="10" fill="#818cf8"/>
+  <rect x="36" y="62" width="120" height="8" fill="#818cf8"/>
+  
+  <!-- Binding rings -->
+  <circle cx="66" cy="42" r="6" fill="#6366f1"/>
+  <circle cx="66" cy="42" r="3" fill="white"/>
+  <circle cx="126" cy="42" r="6" fill="#6366f1"/>
+  <circle cx="126" cy="42" r="3" fill="white"/>
+  
+  <!-- Calendar dates -->
+  <g fill="#6366f1" opacity="0.4">
+    <circle cx="51" cy="90" r="4"/>
+    <circle cx="69" cy="90" r="4"/>
+    <circle cx="87" cy="90" r="4"/>
+    <circle cx="105" cy="90" r="4"/>
+    <circle cx="123" cy="90" r="4"/>
+    <circle cx="141" cy="90" r="4"/>
+    
+    <circle cx="51" cy="108" r="4"/>
+    <circle cx="69" cy="108" r="4"/>
+    <circle cx="87" cy="108" r="4"/>
+    <circle cx="105" cy="108" r="4"/>
+    <circle cx="123" cy="108" r="4"/>
+    <circle cx="141" cy="108" r="4"/>
+    
+    <circle cx="51" cy="126" r="4"/>
+    <circle cx="69" cy="126" r="4"/>
+    <circle cx="87" cy="126" r="4"/>
+    <circle cx="105" cy="126" r="4"/>
+    <circle cx="123" cy="126" r="4"/>
+    <circle cx="141" cy="126" r="4"/>
+  </g>
+  
+  <!-- Highlighted date -->
+  <circle cx="105" cy="108" r="8" fill="#6366f1"/>
+  <circle cx="105" cy="108" r="4" fill="white"/>
+</svg>

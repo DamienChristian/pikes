@@ -1,0 +1,63 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <rect width="1200" height="1200" fill="#fafafa"/>
+  <rect width="1200" height="1200" fill="url(#gradient)"/>
+  
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="1200" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Decorative circles -->
+  <circle cx="150" cy="150" r="100" fill="#6366f1" opacity="0.08"/>
+  <circle cx="1050" cy="1050" r="150" fill="#818cf8" opacity="0.08"/>
+  
+  <!-- Large Calendar icon (centered) -->
+  <g transform="translate(310, 280)">
+    <rect x="0" y="0" width="580" height="540" rx="48" fill="#6366f1"/>
+    <rect x="0" y="0" width="580" height="132" rx="48" fill="#818cf8"/>
+    <rect x="0" y="99" width="580" height="33" fill="#818cf8"/>
+    
+    <!-- Binding rings -->
+    <circle cx="165" cy="0" r="28" fill="white"/>
+    <circle cx="165" cy="0" r="14" fill="#6366f1"/>
+    <circle cx="415" cy="0" r="28" fill="white"/>
+    <circle cx="415" cy="0" r="14" fill="#6366f1"/>
+    
+    <!-- Calendar dates -->
+    <g fill="white" opacity="0.5">
+      <circle cx="80" cy="230" r="20"/>
+      <circle cx="180" cy="230" r="20"/>
+      <circle cx="280" cy="230" r="20"/>
+      <circle cx="380" cy="230" r="20"/>
+      <circle cx="500" cy="230" r="20"/>
+      
+      <circle cx="80" cy="330" r="20"/>
+      <circle cx="180" cy="330" r="20"/>
+      <circle cx="280" cy="330" r="20"/>
+      <circle cx="380" cy="330" r="20"/>
+      <circle cx="500" cy="330" r="20"/>
+      
+      <circle cx="80" cy="430" r="20"/>
+      <circle cx="180" cy="430" r="20"/>
+      <circle cx="280" cy="430" r="20"/>
+      <circle cx="380" cy="430" r="20"/>
+      <circle cx="500" cy="430" r="20"/>
+    </g>
+    
+    <!-- Highlighted date -->
+    <circle cx="280" cy="330" r="42" fill="white"/>
+    <circle cx="280" cy="330" r="20" fill="#6366f1"/>
+  </g>
+  
+  <!-- Text content -->
+  <text x="600" y="920" font-family="system-ui, -apple-system, sans-serif" font-size="84" font-weight="700" fill="#1a1a1a" text-anchor="middle">
+    Pikes Calendar
+  </text>
+  
+  <text x="600" y="1020" font-family="system-ui, -apple-system, sans-serif" font-size="42" font-weight="400" fill="#6366f1" text-anchor="middle">
+    Modern Calendar Application
+  </text>
+</svg>
