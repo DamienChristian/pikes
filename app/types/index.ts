@@ -1,6 +1,8 @@
 /**
  * Calendar Event Types
  */
+export type EventType = "event" | "task";
+
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -13,6 +15,20 @@ export interface CalendarEvent {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  type: EventType;
+  deadline?: Date;
+  completed?: boolean;
+  category?: string;
+  priority?: "low" | "medium" | "high";
+  isRecurring?: boolean;
+  recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
+  recurrenceInterval?: number;
+  recurrenceDaysOfWeek?: number[];
+  recurrenceDayOfMonth?: number;
+  recurrenceEndDate?: Date;
+  recurrenceCount?: number;
+  parentEventId?: string;
+  originalDate?: Date;
 }
 
 export interface CreateEventInput {
@@ -23,6 +39,18 @@ export interface CreateEventInput {
   allDay?: boolean;
   color?: string;
   location?: string;
+  type?: EventType;
+  deadline?: Date;
+  completed?: boolean;
+  category?: string;
+  priority?: "low" | "medium" | "high";
+  isRecurring?: boolean;
+  recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
+  recurrenceInterval?: number;
+  recurrenceDaysOfWeek?: number[];
+  recurrenceDayOfMonth?: number;
+  recurrenceEndDate?: Date;
+  recurrenceCount?: number;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {

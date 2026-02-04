@@ -43,6 +43,58 @@ const EventSchema = new Schema<IEvent>(
       required: [true, "User ID is required"],
       index: true,
     },
+    type: {
+      type: String,
+      enum: ["event", "task"],
+      default: "event",
+    },
+    deadline: {
+      type: Date,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    category: {
+      type: String,
+      trim: true,
+      maxlength: [50, "Category cannot be more than 50 characters"],
+    },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
+    isRecurring: {
+      type: Boolean,
+      default: false,
+    },
+    recurrencePattern: {
+      type: String,
+      enum: ["daily", "weekly", "monthly", "yearly", "custom"],
+    },
+    recurrenceInterval: {
+      type: Number,
+      default: 1,
+    },
+    recurrenceDaysOfWeek: {
+      type: [Number], // 0 = Sunday, 1 = Monday, etc.
+    },
+    recurrenceDayOfMonth: {
+      type: Number, // For monthly: 1-31
+    },
+    recurrenceEndDate: {
+      type: Date,
+    },
+    recurrenceCount: {
+      type: Number, // Number of occurrences
+    },
+    parentEventId: {
+      type: String, // For recurring instances, links to parent
+    },
+    originalDate: {
+      type: Date, // For edited recurring instances
+    },
   },
   {
     timestamps: true,

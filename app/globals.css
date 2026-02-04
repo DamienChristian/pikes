@@ -23,7 +23,7 @@
   --radius-default: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
+.dark {
   @theme {
     --color-background: oklch(18% 0.02 250);
     --color-foreground: oklch(97% 0.01 250);

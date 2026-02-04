@@ -86,4 +86,8 @@ export const RATE_LIMITS = {
     windowMs: 60 * 60 * 1000, // 1 hour
     maxRequests: 3, // 3 reset requests per hour
   },
+  createEvent: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10, // 10 events per minute per user
+  },
 } as const;

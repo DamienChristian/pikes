@@ -6,18 +6,13 @@ import { Button } from "@/app/components/ui/button";
 
 export function ThemeToggle() {
   const [theme, setTheme] = React.useState<"light" | "dark">("light");
+  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    // Check for saved theme preference or default to system preference
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-      .matches
-      ? "dark"
-      : "light";
-    const initialTheme = savedTheme || systemTheme;
-
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle("dark", initialTheme === "dark");
+    setMounted(true);
+    // Read the current theme from the document
+    const isDark = document.documentElement.classList.contains("dark");
+    setTheme(isDark ? "dark" : "light");
   }, []);
 
   const toggleTheme = () => {
@@ -40,7 +35,9 @@ export function ThemeToggle() {
       aria-label="Toggle theme"
       className="h-9 w-9"
     >
-      {theme === "light" ? (
+      {!mounted ? (
+        <div className="h-5 w-5" />
+      ) : theme === "light" ? (
         <Moon className="h-5 w-5" />
       ) : (
         <Sun className="h-5 w-5" />

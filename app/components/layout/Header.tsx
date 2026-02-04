@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, Calendar, ListTodo, FileText } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { ThemeToggle } from "@/app/components/ui/theme-toggle";
 import Image from "next/image";
@@ -60,6 +60,28 @@ export function Header({ session }: HeaderProps) {
         </Link>
 
         <nav className="flex items-center space-x-2 sm:space-x-4">
+          {session && (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/calendar">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Calendar</span>
+                </Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/tasks">
+                  <ListTodo className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Tasks</span>
+                </Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/notes">
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Notes</span>
+                </Link>
+              </Button>
+            </>
+          )}
           <ThemeToggle />
           {session ? (
             <>
@@ -68,6 +90,7 @@ export function Header({ session }: HeaderProps) {
                   <Button
                     variant="ghost"
                     className="flex items-center space-x-2"
+                    suppressHydrationWarning
                   >
                     <User className="h-4 w-4" />
                     <span className="hidden sm:inline">
