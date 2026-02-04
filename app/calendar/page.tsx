@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, CalendarDays, CalendarClock } from "lucide-react";
+import { Calendar, CalendarDays, CalendarClock, Download } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { CalendarMonthView } from "@/app/components/calendar/CalendarMonthView";
 import { CalendarWeekView } from "@/app/components/calendar/CalendarWeekView";
@@ -9,6 +9,7 @@ import { CalendarDayView } from "@/app/components/calendar/CalendarDayView";
 import { EventDialog } from "@/app/components/calendar/EventDialog";
 import { EventDetailDialog } from "@/app/components/calendar/EventDetailDialog";
 import { MiniCalendar } from "@/app/components/calendar/MiniCalendar";
+import { ImportExportDialog } from "@/app/components/calendar/ImportExportDialog";
 import { CalendarEvent } from "@/app/types";
 import { toast } from "sonner";
 import { startOfDay } from "date-fns";
@@ -25,6 +26,7 @@ export default function CalendarPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [importExportDialogOpen, setImportExportDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
@@ -143,8 +145,18 @@ export default function CalendarPage() {
 
         {/* Main Calendar Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* View Toggle */}
-          <div className="flex justify-end mb-4">
+          {/* View Toggle and Actions */}
+          <div className="flex justify-between items-center mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportExportDialogOpen(true)}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Import / Export
+            </Button>
+
             <div className="inline-flex rounded-lg border bg-muted p-1">
               <Button
                 variant={viewMode === "month" ? "default" : "ghost"}
@@ -239,6 +251,13 @@ export default function CalendarPage() {
         event={selectedEvent}
         onEdit={handleEditEvent}
         onDelete={handleSuccess}
+      />
+
+      {/* Import/Export Dialog */}
+      <ImportExportDialog
+        isOpen={importExportDialogOpen}
+        onClose={() => setImportExportDialogOpen(false)}
+        onImportSuccess={fetchEvents}
       />
     </div>
   );
