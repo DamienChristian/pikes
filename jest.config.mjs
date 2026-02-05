@@ -14,6 +14,7 @@ const config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
+  transformIgnorePatterns: ["node_modules/(?!(jose)/)"],
   collectCoverageFrom: [
     "app/**/*.{js,jsx,ts,tsx}",
     "!app/**/*.d.ts",
