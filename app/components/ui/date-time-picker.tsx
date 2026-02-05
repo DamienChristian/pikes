@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import * as React from "react";
+import { Calendar as CalendarIcon, ChevronDownIcon } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Calendar } from "@/app/components/ui/calendar";
 import { cn } from "@/app/lib/utils";
 import { format } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/app/components/ui/popover";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
 
 interface DateTimePickerProps {
   value: Date;
@@ -19,110 +26,76 @@ export function DateTimePicker({
   onChange,
   disabled = false,
 }: DateTimePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(value);
-  const [hours, setHours] = useState(value.getHours());
-  const [minutes, setMinutes] = useState(value.getMinutes());
+  const [selectedDate, setSelectedDate] = React.useState<Date>(value);
+  const [timeValue, setTimeValue] = React.useState<string>(
+    format(value, "HH:mm")
+  );
 
-  const handleSelect = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setHours(hours, minutes);
-    onChange(newDate);
-    setIsOpen(false);
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    setSelectedDate(date);
+
+    // Apply the current time to the new date
+    const [hours, minutes] = timeValue.split(":").map(Number);
+    const newDateTime = new Date(date);
+    newDateTime.setHours(hours, minutes, 0, 0);
+    onChange(newDateTime);
   };
 
-  const handleCancel = () => {
-    setSelectedDate(value);
-    setHours(value.getHours());
-    setMinutes(value.getMinutes());
-    setIsOpen(false);
-  };
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value;
+    setTimeValue(newTime);
 
-  const formatDisplay = (date: Date) => {
-    return format(date, "MMM d, yyyy 'at' h:mm a");
+    // Update the date with new time
+    const [hours, minutes] = newTime.split(":").map(Number);
+    if (!isNaN(hours) && !isNaN(minutes)) {
+      const newDateTime = new Date(selectedDate);
+      newDateTime.setHours(hours, minutes, 0, 0);
+      onChange(newDateTime);
+    }
   };
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        className={cn(
-          "flex w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm",
-          "hover:bg-accent/50 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50"
-        )}
-      >
-        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-        <span className="flex-1 text-left">{formatDisplay(value)}</span>
-      </button>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {value ? (
+            format(value, "PPP 'at' p")
+          ) : (
+            <span>Pick a date and time</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto min-w-[320px] p-0" align="start">
+        <div className="p-4">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleDateSelect}
+            initialFocus
           />
-          <div className="absolute z-50 mt-2 rounded-lg border bg-popover shadow-lg">
-            <div className="p-4 space-y-4">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                initialFocus
-              />
-
-              <div className="border-t pt-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Time</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={hours}
-                    onChange={(e) => setHours(Number(e.target.value))}
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {i.toString().padStart(2, "0")}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-muted-foreground">:</span>
-                  <select
-                    value={minutes}
-                    onChange={(e) => setMinutes(Number(e.target.value))}
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {Array.from({ length: 60 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {i.toString().padStart(2, "0")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancel}
-                >
-                  Cancel
-                </Button>
-                <Button type="button" size="sm" onClick={handleSelect}>
-                  Select
-                </Button>
-              </div>
-            </div>
+          <div className="mt-3 border-t pt-3">
+            <Label htmlFor="time" className="text-sm font-medium">
+              Time
+            </Label>
+            <Input
+              id="time"
+              type="time"
+              value={timeValue}
+              onChange={handleTimeChange}
+              className="mt-2"
+            />
           </div>
-        </>
-      )}
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

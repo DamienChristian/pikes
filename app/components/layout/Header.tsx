@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { User, LogOut, Calendar, ListTodo, FileText } from "lucide-react";
+import { User, LogOut, Calendar, ListTodo, FileText, Menu } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { ThemeToggle } from "@/app/components/ui/theme-toggle";
 import Image from "next/image";
@@ -14,8 +14,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/app/components/ui/sheet";
 import { SessionUser } from "@/app/types";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface HeaderProps {
   session: SessionUser | null;
@@ -25,6 +33,7 @@ export function Header({ session }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith("/auth");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   async function handleLogout() {
     try {
@@ -34,6 +43,7 @@ export function Header({ session }: HeaderProps) {
 
       if (response.ok) {
         toast.success("Logged out successfully");
+        setMobileMenuOpen(false);
         router.push("/auth/login");
         router.refresh();
       }
@@ -59,25 +69,26 @@ export function Header({ session }: HeaderProps) {
           <span className="text-lg sm:text-xl font-bold">Pikes</span>
         </Link>
 
-        <nav className="flex items-center space-x-2 sm:space-x-4">
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-2 sm:space-x-4">
           {session && (
             <>
               <Button variant="ghost" asChild>
                 <Link href="/calendar">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Calendar</span>
+                  Calendar
                 </Link>
               </Button>
               <Button variant="ghost" asChild>
                 <Link href="/tasks">
                   <ListTodo className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Tasks</span>
+                  Tasks
                 </Link>
               </Button>
               <Button variant="ghost" asChild>
                 <Link href="/notes">
                   <FileText className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Notes</span>
+                  Notes
                 </Link>
               </Button>
             </>
@@ -93,10 +104,9 @@ export function Header({ session }: HeaderProps) {
                     suppressHydrationWarning
                   >
                     <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">
+                    <span>
                       {session.firstName} {session.lastName}
                     </span>
-                    <span className="sm:hidden">{session.firstName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -121,15 +131,95 @@ export function Header({ session }: HeaderProps) {
             </>
           ) : !isAuthPage ? (
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" asChild className="text-sm sm:text-base">
+              <Button variant="ghost" asChild>
                 <Link href="/auth/login">Login</Link>
               </Button>
-              <Button asChild className="text-sm sm:text-base">
+              <Button asChild>
                 <Link href="/auth/signup">Sign Up</Link>
               </Button>
             </div>
           ) : null}
         </nav>
+
+        {/* Mobile Navigation */}
+        <div className="flex md:hidden items-center gap-2">
+          <ThemeToggle />
+          {session ? (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 mt-6">
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link
+                      href="/calendar"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Calendar
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link
+                      href="/tasks"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <ListTodo className="h-4 w-4 mr-2" />
+                      Tasks
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link
+                      href="/notes"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Notes
+                    </Link>
+                  </Button>
+                  <div className="border-t pt-4">
+                    <Button
+                      variant="ghost"
+                      asChild
+                      className="justify-start w-full"
+                    >
+                      <Link
+                        href="/profile"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        Profile ({session.firstName})
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={handleLogout}
+                      className="justify-start w-full text-destructive hover:text-destructive"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : !isAuthPage ? (
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" asChild size="sm">
+                <Link href="/auth/login">Login</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/auth/signup">Sign Up</Link>
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </header>
   );

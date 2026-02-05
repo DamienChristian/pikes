@@ -75,6 +75,7 @@ export interface SessionUser {
   email: string;
   firstName: string;
   lastName: string;
+  emailVerified: boolean;
   sessionId: string;
 }
 

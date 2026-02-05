@@ -271,12 +271,12 @@ export function CalendarDayView({
           <div className="flex">
             {/* Time labels */}
             <div className="sticky left-0 z-30 bg-card border-r w-16 flex-shrink-0">
-              <div className="h-[76px] border-b sticky top-0 bg-card z-40" />{" "}
+              <div className="h-[76px] sticky top-0 bg-transparent z-40 border-b-0" />{" "}
               {/* Header spacer */}
               {HOURS.map((hour) => (
                 <div
                   key={hour}
-                  className="relative"
+                  className="relative border-b-0"
                   style={{ height: `${HOUR_HEIGHT}px` }}
                 >
                   <span className="absolute -top-2 right-2 text-xs text-muted-foreground bg-muted/20 px-1">

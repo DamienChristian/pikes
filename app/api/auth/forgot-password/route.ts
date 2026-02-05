@@ -4,6 +4,7 @@ import connectDB from "@/app/lib/db/mongodb";
 import User from "@/app/lib/db/models/User";
 import PasswordResetToken from "@/app/lib/db/models/PasswordResetToken";
 import { forgotPasswordSchema } from "@/app/lib/validations/auth";
+import { sendPasswordResetEmail } from "@/app/lib/services/email";
 import {
   rateLimit,
   RATE_LIMITS,
@@ -73,11 +74,13 @@ export async function POST(request: NextRequest) {
       expiresAt,
     });
 
-    // TODO: Send email with reset link
-    // const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`;
-    // await sendPasswordResetEmail(user.email, resetUrl);
-
-    console.log(`Password reset token for ${user.email}: ${resetToken}`);
+    // Send password reset email
+    try {
+      await sendPasswordResetEmail(user.email, user.firstName, resetToken);
+    } catch (emailError) {
+      console.error("Failed to send password reset email:", emailError);
+      // Continue anyway - don't reveal if email sending failed
+    }
     console.log(
       `Reset URL: ${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`
     );

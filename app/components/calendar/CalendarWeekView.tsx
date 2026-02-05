@@ -204,6 +204,7 @@ export function CalendarWeekView({
     const minutes = Math.floor((y / HOUR_HEIGHT) * 60);
     const time = hour + minutes / 60;
 
+    // Allow dragging across different days
     setDragEnd({ day, time });
   };
 
@@ -217,34 +218,31 @@ export function CalendarWeekView({
           return;
         }
 
-        const isSameDay = dragStart.day.getTime() === dragEnd.day.getTime();
-        if (!isSameDay) {
-          setIsDragging(false);
-          setDragStart(null);
-          setDragEnd(null);
-          return;
-        }
+        // Calculate start and end dates/times
+        const startDateTime = addMinutes(
+          startOfDay(dragStart.day),
+          dragStart.time * 60
+        );
+        const endDateTime = addMinutes(
+          startOfDay(dragEnd.day),
+          dragEnd.time * 60
+        );
 
-        const startTime = Math.min(dragStart.time, dragEnd.time);
-        const endTime = Math.max(dragStart.time, dragEnd.time);
-        const timeDiff = Math.abs(endTime - startTime);
+        // Ensure start is before end
+        const actualStart =
+          startDateTime < endDateTime ? startDateTime : endDateTime;
+        const actualEnd =
+          startDateTime < endDateTime ? endDateTime : startDateTime;
+
+        const timeDiff = differenceInMinutes(actualEnd, actualStart) / 60;
 
         // If very small movement, treat as click (1 hour event)
         if (timeDiff < 0.1) {
-          const startDate = addMinutes(
-            startOfDay(dragStart.day),
-            startTime * 60
-          );
-          const endDate = addMinutes(startDate, 60);
-          onCreateEvent?.(startDate, endDate);
+          const endDate = addMinutes(actualStart, 60);
+          onCreateEvent?.(actualStart, endDate);
         } else if (timeDiff >= 0.5) {
           // Minimum 30 minutes for drag
-          const startDate = addMinutes(
-            startOfDay(dragStart.day),
-            startTime * 60
-          );
-          const endDate = addMinutes(startOfDay(dragStart.day), endTime * 60);
-          onCreateEvent?.(startDate, endDate);
+          onCreateEvent?.(actualStart, actualEnd);
         }
 
         setIsDragging(false);
@@ -260,13 +258,40 @@ export function CalendarWeekView({
   // Get drag selection style
   const getDragSelectionStyle = (day: Date) => {
     if (!isDragging || !dragStart || !dragEnd) return null;
-    if (dragStart.day.getTime() !== day.getTime()) return null;
 
-    const startTime = Math.min(dragStart.time, dragEnd.time);
-    const endTime = Math.max(dragStart.time, dragEnd.time);
+    // Check if this day is involved in the drag selection
+    const dayTime = day.getTime();
+    const startDayTime = dragStart.day.getTime();
+    const endDayTime = dragEnd.day.getTime();
 
-    const top = startTime * HOUR_HEIGHT;
-    const height = (endTime - startTime) * HOUR_HEIGHT;
+    // Determine if the day is within the drag range
+    const minDay = Math.min(startDayTime, endDayTime);
+    const maxDay = Math.max(startDayTime, endDayTime);
+
+    if (dayTime < minDay || dayTime > maxDay) return null;
+
+    // Calculate top and height based on whether it's the start, end, or middle day
+    let top = 0;
+    let height = 24 * HOUR_HEIGHT; // Full day by default
+
+    if (dayTime === minDay && dayTime === maxDay) {
+      // Same day selection
+      const startTime = Math.min(dragStart.time, dragEnd.time);
+      const endTime = Math.max(dragStart.time, dragEnd.time);
+      top = startTime * HOUR_HEIGHT;
+      height = (endTime - startTime) * HOUR_HEIGHT;
+    } else if (dayTime === minDay) {
+      // First day of multi-day selection
+      const startTime = startDayTime === minDay ? dragStart.time : dragEnd.time;
+      top = startTime * HOUR_HEIGHT;
+      height = (24 - startTime) * HOUR_HEIGHT;
+    } else if (dayTime === maxDay) {
+      // Last day of multi-day selection
+      const endTime = endDayTime === maxDay ? dragEnd.time : dragStart.time;
+      top = 0;
+      height = endTime * HOUR_HEIGHT;
+    }
+    // else: middle day, use full day (already set)
 
     return { top, height };
   };
@@ -337,12 +362,12 @@ export function CalendarWeekView({
         <div className="flex min-w-max">
           {/* Time column */}
           <div className="w-16 flex-shrink-0 bg-muted/20 sticky left-0 z-30">
-            <div className="h-12 border-b sticky top-0 bg-muted/20 z-40" />{" "}
+            <div className="h-12 border-b-0 sticky top-0 bg-muted/20 z-40" />{" "}
             {/* Header spacer */}
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="relative"
+                className="relative border-b-0"
                 style={{ height: `${HOUR_HEIGHT}px` }}
               >
                 <span className="absolute -top-2 right-2 text-xs text-muted-foreground bg-muted/20 px-1">

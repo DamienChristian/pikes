@@ -105,11 +105,11 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8 h-[calc(100vh-8rem)]">
-      <div className="flex gap-6 h-full">
+    <div className="container mx-auto px-4 py-8 min-h-[calc(100vh-12rem)]">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar with Mini Calendar */}
-        <div className="w-80 flex-shrink-0 space-y-6">
-          <div className="bg-card border rounded-lg p-4">
+        <div className="lg:w-80 w-full flex-shrink-0 space-y-6">
+          <div className="bg-card border rounded-lg p-4 lg:block">
             <MiniCalendar
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
@@ -118,7 +118,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-card border rounded-lg p-4 space-y-3">
+          <div className="hidden lg:block bg-card border rounded-lg p-4 space-y-3">
             <h3 className="font-semibold text-sm">Quick Stats</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -146,44 +146,44 @@ export default function CalendarPage() {
         {/* Main Calendar Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* View Toggle and Actions */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:justify-between sm:items-center mb-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setImportExportDialogOpen(true)}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
-              Import / Export
+              <span className="sm:inline">Import / Export</span>
             </Button>
 
-            <div className="inline-flex rounded-lg border bg-muted p-1">
+            <div className="inline-flex rounded-lg border bg-muted p-1 w-full sm:w-auto">
               <Button
                 variant={viewMode === "month" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("month")}
-                className="gap-2"
+                className="gap-2 flex-1 sm:flex-initial"
               >
                 <Calendar className="h-4 w-4" />
-                Month
+                <span className="hidden sm:inline">Month</span>
               </Button>
               <Button
                 variant={viewMode === "week" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("week")}
-                className="gap-2"
+                className="gap-2 flex-1 sm:flex-initial"
               >
                 <CalendarDays className="h-4 w-4" />
-                Week
+                <span className="hidden sm:inline">Week</span>
               </Button>
               <Button
                 variant={viewMode === "day" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("day")}
-                className="gap-2"
+                className="gap-2 flex-1 sm:flex-initial"
               >
                 <CalendarClock className="h-4 w-4" />
-                Day
+                <span className="hidden sm:inline">Day</span>
               </Button>
             </div>
           </div>

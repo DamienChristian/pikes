@@ -31,6 +31,7 @@ import {
 } from "@/app/components/ui/form";
 import { Input } from "@/app/components/ui/input";
 import { toast } from "sonner";
+import { CheckCircle2, XCircle, Mail } from "lucide-react";
 
 interface ProfilePageProps {
   session: SessionUser;
@@ -40,6 +41,7 @@ export function ProfilePage({ session }: ProfilePageProps) {
   const router = useRouter();
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   const profileForm = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
@@ -117,6 +119,35 @@ export function ProfilePage({ session }: ProfilePageProps) {
     }
   }
 
+  async function onResendVerification() {
+    setIsResendingVerification(true);
+
+    try {
+      const response = await fetch(
+        `/api/auth/verify-email?email=${session.email}`,
+        {
+          method: "GET",
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to resend verification email");
+      }
+
+      toast.success("Verification email sent! Please check your inbox.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to resend verification email"
+      );
+    } finally {
+      setIsResendingVerification(false);
+    }
+  }
+
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
@@ -185,15 +216,40 @@ export function ProfilePage({ session }: ProfilePageProps) {
                   <label className="text-sm font-medium leading-none">
                     Email
                   </label>
-                  <Input
-                    type="email"
-                    value={session.email}
-                    disabled={true}
-                    className="bg-muted cursor-not-allowed"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Email cannot be changed after account creation
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      value={session.email}
+                      disabled={true}
+                      className="bg-muted cursor-not-allowed flex-1"
+                    />
+                    {session.emailVerified ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {session.emailVerified
+                        ? "Email verified"
+                        : "Email not verified"}
+                    </p>
+                    {!session.emailVerified && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onResendVerification}
+                        disabled={isResendingVerification}
+                      >
+                        <Mail className="h-4 w-4 mr-1" />
+                        {isResendingVerification
+                          ? "Sending..."
+                          : "Resend verification"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <Button type="submit" disabled={isUpdatingProfile}>
