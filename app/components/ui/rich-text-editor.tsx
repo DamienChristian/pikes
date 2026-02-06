@@ -79,7 +79,7 @@ export function RichTextEditor({
         quillRef.current = null;
       }
     };
-  }, [placeholder, onChange, content]);
+  }, []);
 
   // Update content when prop changes
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 // Define public routes that don't require authentication
 const publicRoutes = [
@@ -7,10 +8,29 @@ const publicRoutes = [
   "/auth/signup",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/verify-email",
 ];
 
 // Define auth routes (redirect to home if already authenticated)
 const authRoutes = ["/auth/login", "/auth/signup"];
+
+// Get JWT secret
+const getSecret = () => {
+  const secret =
+    process.env.JWT_SECRET ||
+    "your-secret-key-min-32-chars-long-for-development";
+  return new TextEncoder().encode(secret);
+};
+
+// Verify if session token is valid
+async function isValidSession(token: string): Promise<boolean> {
+  try {
+    await jwtVerify(token, getSecret());
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,16 +45,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Get session token from cookies (simple check, full validation happens in routes)
-  const hasSession = request.cookies.has("session");
+  // Get session token from cookies and validate it
+  const sessionToken = request.cookies.get("session")?.value;
+  const hasValidSession = sessionToken
+    ? await isValidSession(sessionToken)
+    : false;
 
-  // If user is on an auth route and has a session cookie, redirect to home
-  if (hasSession && authRoutes.includes(pathname)) {
+  // If user is on an auth route and has a valid session, redirect to home
+  if (hasValidSession && authRoutes.includes(pathname)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // If user is on a protected route and has no session cookie, redirect to login
-  if (!hasSession && !publicRoutes.includes(pathname)) {
+  // If user is on a protected route and has no valid session, redirect to login
+  if (!hasValidSession && !publicRoutes.includes(pathname)) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
