@@ -7,6 +7,7 @@ export interface IUser {
   password: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   emailVerified: boolean;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
@@ -52,6 +53,10 @@ const UserSchema = new Schema<IUser, UserModel, IUserMethods>(
       required: [true, "Last name is required"],
       trim: true,
       maxlength: [50, "Last name cannot exceed 50 characters"],
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
     },
     emailVerified: {
       type: Boolean,

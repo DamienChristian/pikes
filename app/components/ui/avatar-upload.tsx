@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner";
 import { toast } from "sonner";
 import { cn } from "@/app/lib/utils";
@@ -11,14 +11,17 @@ interface AvatarUploadProps {
   currentAvatarUrl?: string;
   userName: string;
   onUploadComplete?: (avatarUrl: string) => void;
+  onDeleteComplete?: () => void;
 }
 
 export function AvatarUpload({
   currentAvatarUrl,
   userName,
   onUploadComplete,
+  onDeleteComplete,
 }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(
     currentAvatarUrl
   );
@@ -83,6 +86,31 @@ export function AvatarUpload({
     fileInputRef.current?.click();
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Remove your profile picture?")) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/auth/upload-avatar", {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to remove profile picture");
+      }
+      setPreviewUrl(undefined);
+      toast.success("Profile picture removed");
+      onDeleteComplete?.();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove profile picture"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -98,7 +126,7 @@ export function AvatarUpload({
         <div
           className={cn(
             "relative flex items-center justify-center w-32 h-32 rounded-full overflow-hidden border-4 border-border bg-muted",
-            isUploading && "opacity-50"
+            (isUploading || isDeleting) && "opacity-50"
           )}
         >
           {previewUrl ? (
@@ -116,7 +144,7 @@ export function AvatarUpload({
           )}
         </div>
 
-        {isUploading && (
+        {(isUploading || isDeleting) && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-full">
             <LoadingSpinner size="lg" />
           </div>
@@ -124,15 +152,29 @@ export function AvatarUpload({
 
         <button
           onClick={handleButtonClick}
-          disabled={isUploading}
+          disabled={isUploading || isDeleting}
           className={cn(
             "absolute bottom-0 right-0 p-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors",
-            isUploading && "opacity-50 cursor-not-allowed"
+            (isUploading || isDeleting) && "opacity-50 cursor-not-allowed"
           )}
           aria-label="Upload profile picture"
         >
           <Upload className="h-4 w-4" />
         </button>
+
+        {previewUrl && (
+          <button
+            onClick={handleDelete}
+            disabled={isUploading || isDeleting}
+            className={cn(
+              "absolute bottom-0 left-0 p-2 rounded-full bg-destructive text-destructive-foreground shadow-lg hover:bg-destructive/90 transition-colors",
+              (isUploading || isDeleting) && "opacity-50 cursor-not-allowed"
+            )}
+            aria-label="Remove profile picture"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <input
@@ -141,7 +183,7 @@ export function AvatarUpload({
         accept="image/*"
         onChange={handleFileChange}
         className="hidden"
-        disabled={isUploading}
+        disabled={isUploading || isDeleting}
       />
 
       <div className="text-center">

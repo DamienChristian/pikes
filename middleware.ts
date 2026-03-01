@@ -11,9 +11,6 @@ const publicRoutes = [
   "/auth/verify-email",
 ];
 
-// Define auth routes (redirect to home if already authenticated)
-const authRoutes = ["/auth/login", "/auth/signup"];
-
 // Get JWT secret
 const getSecret = () => {
   const secret =
@@ -32,7 +29,7 @@ async function isValidSession(token: string): Promise<boolean> {
   }
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow access to API routes and static files
@@ -50,11 +47,6 @@ export async function proxy(request: NextRequest) {
   const hasValidSession = sessionToken
     ? await isValidSession(sessionToken)
     : false;
-
-  // If user is on an auth route and has a valid session, redirect to home
-  if (hasValidSession && authRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
 
   // If user is on a protected route and has no valid session, redirect to login
   if (!hasValidSession && !publicRoutes.includes(pathname)) {

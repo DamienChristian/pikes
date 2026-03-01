@@ -22,6 +22,7 @@ export interface SessionData {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   emailVerified: boolean;
   sessionId: string;
 }
@@ -82,7 +83,7 @@ export async function verifySession(
 
     // Get user data
     const user = await User.findById(payload.userId).select(
-      "email firstName lastName emailVerified"
+      "email firstName lastName avatarUrl emailVerified"
     );
 
     if (!user) {
@@ -94,6 +95,7 @@ export async function verifySession(
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       sessionId: payload.sessionId,
     };

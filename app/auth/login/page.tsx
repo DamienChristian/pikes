@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getSession } from "@/app/lib/utils/session";
 import { LoginForm } from "@/app/components/auth/LoginForm";
 
 export const metadata: Metadata = {
@@ -7,7 +9,12 @@ export const metadata: Metadata = {
     "Sign in to your Pikes Calendar account to manage your events and schedules.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await getSession();
+  if (session) {
+    redirect("/calendar");
+  }
+
   return (
     <div className="container flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px] md:w-[450px]">

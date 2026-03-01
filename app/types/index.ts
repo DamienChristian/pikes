@@ -65,6 +65,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -75,6 +76,7 @@ export interface SessionUser {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   emailVerified: boolean;
   sessionId: string;
 }

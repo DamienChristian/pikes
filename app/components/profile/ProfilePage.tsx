@@ -172,8 +172,10 @@ export function ProfilePage({ session }: ProfilePageProps) {
             {/* Avatar Upload Section */}
             <div className="mb-8 pt-4">
               <AvatarUpload
+                currentAvatarUrl={session.avatarUrl}
                 userName={`${session.firstName} ${session.lastName}`}
                 onUploadComplete={() => router.refresh()}
+                onDeleteComplete={() => router.refresh()}
               />
             </div>
 

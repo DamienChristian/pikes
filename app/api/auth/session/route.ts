@@ -24,6 +24,7 @@ export async function GET() {
             email: session.email,
             firstName: session.firstName,
             lastName: session.lastName,
+            avatarUrl: session.avatarUrl,
           },
         },
       },
