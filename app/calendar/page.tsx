@@ -95,7 +95,6 @@ export default function CalendarPage() {
 
   const handleSuccess = () => {
     dispatch(fetchEvents());
-    dispatch(fetchCalendars());
     handleDialogClose();
   };
 
@@ -104,11 +103,16 @@ export default function CalendarPage() {
     const cal = calendars.find((c) => c.id === calendarId);
     if (!cal) return;
 
+    // Capture the desired new visibility before the optimistic flip
+    const newVisibility = !cal.isVisible;
+
     // Optimistic update
     dispatch(optimisticToggleVisibility(calendarId));
 
     try {
-      await dispatch(toggleCalendarVisibility(calendarId)).unwrap();
+      await dispatch(
+        toggleCalendarVisibility({ calendarId, isVisible: newVisibility })
+      ).unwrap();
     } catch {
       // Revert on error
       dispatch(

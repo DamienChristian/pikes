@@ -38,13 +38,9 @@ export default function TasksPage() {
 
       const data = await response.json();
 
-      console.log("API response:", data);
-      console.log("All events:", data.data?.events);
-
       // Filter only tasks
       const taskList = data.data.events
         .filter((event: CalendarEvent) => {
-          console.log("Event:", event.title, "Type:", event.type);
           return event.type === "task";
         })
         .map((event: CalendarEvent) => ({
@@ -58,8 +54,6 @@ export default function TasksPage() {
           category: event.category,
           priority: event.priority || "medium",
         }));
-
-      console.log("Filtered tasks:", taskList);
 
       setTasks(taskList);
     } catch (error) {

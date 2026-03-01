@@ -43,8 +43,12 @@ function generateUID(eventId: string, domain: string = "calendar.app"): string {
 
 /**
  * Convert a single event to ICS VEVENT format
+ * @param calendarName - optional calendar name to embed in CATEGORIES for round-trip import
  */
-export function eventToICS(event: CalendarEvent): string {
+export function eventToICS(
+  event: CalendarEvent,
+  calendarName?: string
+): string {
   const lines: string[] = [];
 
   lines.push("BEGIN:VEVENT");
@@ -73,9 +77,13 @@ export function eventToICS(event: CalendarEvent): string {
     lines.push(`LOCATION:${escapeICSText(event.location)}`);
   }
 
-  // Category
-  if (event.category) {
-    lines.push(`CATEGORIES:${escapeICSText(event.category)}`);
+  // Category — combine event category and calendar name into one CATEGORIES line
+  // per RFC 5545 §3.8.1.2; calendar name enables round-trip import matching
+  const categoryParts: string[] = [];
+  if (event.category) categoryParts.push(escapeICSText(event.category));
+  if (calendarName) categoryParts.push(escapeICSText(calendarName));
+  if (categoryParts.length > 0) {
+    lines.push(`CATEGORIES:${categoryParts.join(",")}`);
   }
 
   // Priority (convert our priority to RFC 5545 priority)
@@ -161,8 +169,13 @@ function generateRRule(event: CalendarEvent): string | null {
 
 /**
  * Convert multiple events to a complete ICS file
+ * @param options.calendarName - name to use in X-WR-CALNAME header
+ * @param options.calendarMap - map of calendarId → calendar name for per-event CATEGORIES
  */
-export function eventsToICS(events: CalendarEvent[]): string {
+export function eventsToICS(
+  events: CalendarEvent[],
+  options?: { calendarName?: string; calendarMap?: Record<string, string> }
+): string {
   const lines: string[] = [];
 
   // Calendar header
@@ -171,12 +184,17 @@ export function eventsToICS(events: CalendarEvent[]): string {
   lines.push("PRODID:-//Calendar App//Calendar 1.0//EN");
   lines.push("CALSCALE:GREGORIAN");
   lines.push("METHOD:PUBLISH");
-  lines.push("X-WR-CALNAME:My Calendar");
+  // X-WR-CALNAME is a non-standard Apple extension — write the raw name without ICS text-escaping
+  lines.push(`X-WR-CALNAME:${options?.calendarName ?? "My Calendar"}`);
   lines.push("X-WR-TIMEZONE:UTC");
 
-  // Add all events
+  // Add all events — pass per-event calendar name for CATEGORIES
   events.forEach((event) => {
-    lines.push(eventToICS(event));
+    const calName =
+      event.calendarId && options?.calendarMap
+        ? options.calendarMap[event.calendarId]
+        : undefined;
+    lines.push(eventToICS(event, calName));
   });
 
   // Calendar footer
@@ -323,7 +341,10 @@ export function parseICSWithMeta(icsContent: string): ParsedICSResult {
       currentEvent = { allDay: false };
       isAllDay = false;
     } else if (!currentEvent && line.startsWith("X-WR-CALNAME:")) {
-      calendarName = line.substring("X-WR-CALNAME:".length).trim();
+      // Unescape in case a third-party exporter applies ICS text-escaping here
+      calendarName = unescapeICSText(
+        line.substring("X-WR-CALNAME:".length).trim()
+      );
     } else if (line === "END:VEVENT" && currentEvent) {
       if (
         currentEvent.title &&

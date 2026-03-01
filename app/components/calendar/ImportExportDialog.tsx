@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/app/components/ui/button";
+import { Checkbox } from "@/app/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner";
 import { toast } from "sonner";
+import { useAppSelector } from "@/app/lib/store/hooks";
 
 interface ImportExportDialogProps {
   isOpen: boolean;
@@ -32,6 +34,11 @@ export function ImportExportDialog({
   onClose,
   onImportSuccess,
 }: ImportExportDialogProps) {
+  const calendars = useAppSelector((state) => state.calendars.items);
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState<Set<string>>(
+    new Set()
+  );
+
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [icsUrl, setIcsUrl] = useState("");
@@ -40,19 +47,55 @@ export function ImportExportDialog({
     message: string;
   }>({ type: null, message: "" });
 
+  // Initialise selection to all calendars when the dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCalendarIds(new Set(calendars.map((c) => c.id)));
+    }
+  }, [isOpen, calendars]);
+
+  const allSelected =
+    calendars.length > 0 && selectedCalendarIds.size === calendars.length;
+  const noneSelected = selectedCalendarIds.size === 0;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedCalendarIds(new Set());
+    } else {
+      setSelectedCalendarIds(new Set(calendars.map((c) => c.id)));
+    }
+  };
+
+  const toggleCalendar = (id: string) => {
+    setSelectedCalendarIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const handleExport = async () => {
+    if (noneSelected) {
+      toast.error("Select at least one calendar to export");
+      return;
+    }
+
     setIsExporting(true);
     try {
-      const response = await fetch("/api/calendar/export");
+      const params = new URLSearchParams();
+      params.set("calendarIds", Array.from(selectedCalendarIds).join(","));
+
+      const response = await fetch(`/api/calendar/export?${params}`);
 
       if (!response.ok) {
         throw new Error("Failed to export calendar");
       }
 
-      // Get the ICS content
       const blob = await response.blob();
-
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -138,6 +181,7 @@ export function ImportExportDialog({
   const handleClose = () => {
     setImportStatus({ type: null, message: "" });
     setIcsUrl("");
+    setSelectedCalendarIds(new Set(calendars.map((c) => c.id)));
     onClose();
   };
 
@@ -221,9 +265,59 @@ export function ImportExportDialog({
               Download your events as an ICS file that can be imported into
               other calendar applications.
             </p>
+
+            {/* Calendar selection */}
+            {calendars.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                {/* Select / Deselect all */}
+                <div className="flex items-center gap-3 px-3 py-2 bg-muted/40 border-b">
+                  <Checkbox
+                    id="export-select-all"
+                    checked={allSelected}
+                    onCheckedChange={toggleAll}
+                  />
+                  <label
+                    htmlFor="export-select-all"
+                    className="text-sm font-medium cursor-pointer select-none"
+                  >
+                    {allSelected ? "Deselect all" : "Select all"}
+                  </label>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {selectedCalendarIds.size} / {calendars.length} selected
+                  </span>
+                </div>
+
+                {/* Calendar rows */}
+                <div className="divide-y max-h-40 overflow-y-auto">
+                  {calendars.map((cal) => (
+                    <div
+                      key={cal.id}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 transition-colors"
+                    >
+                      <Checkbox
+                        id={`export-cal-${cal.id}`}
+                        checked={selectedCalendarIds.has(cal.id)}
+                        onCheckedChange={() => toggleCalendar(cal.id)}
+                      />
+                      <span
+                        className="w-3 h-3 rounded-sm flex-shrink-0"
+                        style={{ backgroundColor: cal.color }}
+                      />
+                      <label
+                        htmlFor={`export-cal-${cal.id}`}
+                        className="text-sm cursor-pointer select-none flex-1 truncate"
+                      >
+                        {cal.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Button
               onClick={handleExport}
-              disabled={isExporting}
+              disabled={isExporting || noneSelected}
               className="w-full"
               variant="outline"
             >

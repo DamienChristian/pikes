@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongodb";
 import Event from "@/app/lib/db/models/Event";
+import Calendar from "@/app/lib/db/models/Calendar";
 import { getSession } from "@/app/lib/utils/session";
 import { eventsToICS } from "@/app/lib/utils/ics";
 import { CalendarEvent } from "@/app/types";
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const type = searchParams.get("type"); // 'event', 'task', or null for all
+    const calendarIds = searchParams.get("calendarIds"); // comma-separated list
 
     // Build query
     const query: Record<string, unknown> = {
@@ -42,6 +44,14 @@ export async function GET(request: NextRequest) {
     // Add type filter if provided
     if (type && (type === "event" || type === "task")) {
       query.type = type;
+    }
+
+    // Add calendar filter if provided
+    if (calendarIds) {
+      const ids = calendarIds.split(",").filter(Boolean);
+      if (ids.length > 0) {
+        query.calendarId = { $in: ids };
+      }
     }
 
     // Fetch events
@@ -70,19 +80,53 @@ export async function GET(request: NextRequest) {
       recurrenceCount: event.recurrenceCount,
       parentEventId: event.parentEventId,
       originalDate: event.originalDate,
+      calendarId: event.calendarId?.toString(),
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
     }));
 
+    // Build calendar name info for ICS X-WR-CALNAME and per-event CATEGORIES
+    const involvedCalendarIds = [
+      ...new Set(
+        calendarEvents.map((e) => e.calendarId).filter(Boolean) as string[]
+      ),
+    ];
+    const calendarDocs = involvedCalendarIds.length
+      ? await Calendar.find({ _id: { $in: involvedCalendarIds } }).lean()
+      : [];
+
+    const calendarMap: Record<string, string> = {};
+    calendarDocs.forEach((c) => {
+      calendarMap[c._id.toString()] = c.name;
+    });
+
+    // For the VCALENDAR header name: use the single calendar name, or join multiple
+    const calendarNames = calendarDocs.map((c) => c.name);
+    const calendarName =
+      calendarNames.length === 1
+        ? calendarNames[0]
+        : calendarNames.length > 1
+          ? calendarNames.join(", ")
+          : "My Calendar";
+
+    // Filename: sanitise for Content-Disposition
+    const safeFilename = calendarName
+      .replace(/[^\w\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-");
+
     // Convert to ICS format
-    const icsContent = eventsToICS(calendarEvents);
+    const icsContent = eventsToICS(calendarEvents, {
+      calendarName,
+      calendarMap,
+    });
 
     // Return ICS file
     return new NextResponse(icsContent, {
       status: 200,
       headers: {
         "Content-Type": "text/calendar;charset=utf-8",
-        "Content-Disposition": `attachment; filename="calendar-export.ics"`,
+        "Content-Disposition": `attachment; filename="${safeFilename}-export.ics"`,
       },
     });
   } catch (error) {

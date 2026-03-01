@@ -43,19 +43,21 @@ export const createCalendar = createAsyncThunk(
 
 export const toggleCalendarVisibility = createAsyncThunk(
   "calendars/toggleVisibility",
-  async (calendarId: string, { getState }) => {
-    const state = getState() as { calendars: CalendarsState };
-    const cal = state.calendars.items.find((c) => c.id === calendarId);
-    if (!cal) throw new Error("Calendar not found");
-
+  async ({
+    calendarId,
+    isVisible,
+  }: {
+    calendarId: string;
+    isVisible: boolean;
+  }) => {
     const response = await fetch(`/api/calendars/${calendarId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isVisible: !cal.isVisible }),
+      body: JSON.stringify({ isVisible }),
     });
     if (!response.ok) throw new Error("Failed to update");
 
-    return { calendarId, isVisible: !cal.isVisible };
+    return { calendarId, isVisible };
   }
 );
 
