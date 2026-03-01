@@ -38,6 +38,20 @@ export interface UserCalendar {
 }
 
 /**
+ * Note Member Types
+ */
+export interface NoteMember {
+  userId: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  role: "viewer" | "editor";
+  addedAt: Date;
+}
+
+/**
  * Event Member Types
  */
 export interface EventMember {

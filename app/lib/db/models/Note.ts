@@ -1,14 +1,30 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface INoteMember {
+  userId: string;
+  role: "viewer" | "editor";
+  addedAt: Date;
+}
+
 export interface INote extends Document {
   userId: mongoose.Types.ObjectId;
   title: string;
   content: string; // Rich text content (stored as HTML or JSON)
   category?: string;
   linkedEventId?: mongoose.Types.ObjectId; // Optional link to event/task
+  members: INoteMember[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const NoteMemberSchema = new Schema<INoteMember>(
+  {
+    userId: { type: String, required: true },
+    role: { type: String, enum: ["viewer", "editor"], default: "viewer" },
+    addedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const NoteSchema = new Schema<INote>(
   {
@@ -40,6 +56,10 @@ const NoteSchema = new Schema<INote>(
       ref: "Event",
       index: true,
     },
+    members: {
+      type: [NoteMemberSchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
@@ -50,6 +70,9 @@ const NoteSchema = new Schema<INote>(
 NoteSchema.index({ userId: 1, createdAt: -1 });
 NoteSchema.index({ userId: 1, category: 1 });
 NoteSchema.index({ userId: 1, linkedEventId: 1 });
+NoteSchema.index({ "members.userId": 1 });
 
-export default mongoose.models.Note ||
-  mongoose.model<INote>("Note", NoteSchema);
+// Delete cached model to pick up schema changes
+delete mongoose.models.Note;
+
+export default mongoose.model<INote>("Note", NoteSchema);

@@ -9,7 +9,7 @@ import { createNoteSchema } from "@/app/lib/validations/note";
 
 /**
  * GET /api/notes
- * List all notes for the authenticated user
+ * List all notes for the authenticated user (owned + shared with them)
  * Query params: limit, category, linkedEventId
  */
 export async function GET(request: NextRequest) {
@@ -29,52 +29,72 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const query: Record<string, unknown> = {
-      userId: session.userId,
+    // Base query: notes owned by user OR shared with user
+    let query: Record<string, unknown> = {
+      $or: [{ userId: session.userId }, { "members.userId": session.userId }],
     };
 
     if (category) {
       query.category = category;
     }
 
-    // When fetching notes linked to an event, check if the user has access
-    // to the event via calendar sharing OR event-level sharing. If so, show
-    // all notes for that event regardless of who created them.
+    // When fetching notes linked to an event, check if the user has broad
+    // access to that event (calendar/event-level sharing). If so, show ALL
+    // notes for that event regardless of who created them.
     if (linkedEventId) {
-      query.linkedEventId = linkedEventId;
-
       const event = await Event.findById(linkedEventId).lean();
-      if (event) {
-        let hasAccess = false;
+      let hasEventAccess = false;
 
-        // Check event-level sharing (direct member)
-        const eventMembers =
-          (event.members as Array<{
-            userId: string | mongoose.Types.ObjectId;
-          }>) || [];
-        if (eventMembers.some((m) => m.userId.toString() === session.userId)) {
-          hasAccess = true;
+      if (event) {
+        // Event owner
+        if (event.userId?.toString() === session.userId) {
+          hasEventAccess = true;
         }
 
-        // Check calendar-level sharing
-        if (!hasAccess && event.calendarId) {
+        // Event-level member
+        if (!hasEventAccess) {
+          const eventMembers =
+            (event.members as Array<{
+              userId: string | mongoose.Types.ObjectId;
+            }>) || [];
+          if (
+            eventMembers.some((m) => m.userId.toString() === session.userId)
+          ) {
+            hasEventAccess = true;
+          }
+        }
+
+        // Calendar-level member
+        if (!hasEventAccess && event.calendarId) {
           const calendar = await Calendar.findById(event.calendarId).lean();
           if (calendar) {
             const isCalOwner = calendar.userId.toString() === session.userId;
             const isCalMember = calendar.members?.some(
-              (m: { userId: mongoose.Types.ObjectId }) =>
-                m.userId.toString() === session.userId
+              (m) => m.userId.toString() === session.userId
             );
             if (isCalOwner || isCalMember) {
-              hasAccess = true;
+              hasEventAccess = true;
             }
           }
         }
+      }
 
-        if (hasAccess) {
-          // User has access — show all notes for the event
-          delete query.userId;
-        }
+      if (hasEventAccess) {
+        // Show ALL notes for this event
+        query = { linkedEventId };
+      } else {
+        // Show only accessible notes for this event
+        query = {
+          linkedEventId,
+          $or: [
+            { userId: session.userId },
+            { "members.userId": session.userId },
+          ],
+        };
+      }
+
+      if (category) {
+        query.category = category;
       }
     }
 
@@ -83,15 +103,35 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
-    const formattedNotes = notes.map((note) => ({
-      id: note._id.toString(),
-      title: note.title,
-      content: note.content,
-      category: note.category,
-      linkedEventId: note.linkedEventId?.toString(),
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-    }));
+    const formattedNotes = notes.map((note) => {
+      const isOwner = note.userId.toString() === session.userId;
+      const myMember = (note.members || []).find(
+        (m: { userId: string; role: string }) => m.userId === session.userId
+      );
+      const myRole: "owner" | "editor" | "viewer" = isOwner
+        ? "owner"
+        : ((myMember?.role as "editor" | "viewer") ?? "viewer");
+
+      return {
+        id: note._id.toString(),
+        userId: note.userId.toString(),
+        title: note.title,
+        content: note.content,
+        category: note.category,
+        linkedEventId: note.linkedEventId?.toString(),
+        members: (note.members || []).map(
+          (m: { userId: string; role: string; addedAt: Date }) => ({
+            userId: m.userId,
+            role: m.role,
+            addedAt: m.addedAt,
+          })
+        ),
+        isOwner,
+        myRole,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -153,10 +193,13 @@ export async function POST(request: NextRequest) {
         data: {
           note: {
             id: note._id.toString(),
+            userId: note.userId.toString(),
             title: note.title,
             content: note.content,
             category: note.category,
             linkedEventId: note.linkedEventId?.toString(),
+            members: [],
+            isOwner: true,
             createdAt: note.createdAt,
             updatedAt: note.updatedAt,
           },

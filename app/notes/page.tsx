@@ -1,20 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, FileText, Trash2, Edit, Calendar } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  Trash2,
+  Edit,
+  Calendar,
+  Share2,
+  Eye,
+  Users,
+} from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { NoteDialog } from "@/app/components/notes/NoteDialog";
+import { ShareNoteDialog } from "@/app/components/notes/ShareNoteDialog";
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 interface Note {
   id: string;
+  userId: string;
   title: string;
   content: string;
   category?: string;
   linkedEventId?: string;
+  isOwner: boolean;
+  myRole: "owner" | "editor" | "viewer";
+  members?: Array<{ userId: string; role: string }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +39,10 @@ export default function NotesPage() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareNote, setShareNote] = useState<Note | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewNote, setViewNote] = useState<Note | null>(null);
   const [filter, setFilter] = useState<string>("all");
 
   const fetchNotes = async () => {
@@ -81,6 +99,16 @@ export default function NotesPage() {
   const handleEdit = (note: Note) => {
     setSelectedNote(note);
     setEditDialogOpen(true);
+  };
+
+  const handleShare = (note: Note) => {
+    setShareNote(note);
+    setShareDialogOpen(true);
+  };
+
+  const handleView = (note: Note) => {
+    setViewNote(note);
+    setViewDialogOpen(true);
   };
 
   const handleSuccess = () => {
@@ -196,28 +224,57 @@ export default function NotesPage() {
                         {note.title}
                       </h3>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(note);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(note.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {note.myRole === "viewer" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleView(note);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(note);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {note.isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShare(note);
+                            }}
+                          >
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {note.isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(note.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -229,12 +286,28 @@ export default function NotesPage() {
                       <span>
                         {format(new Date(note.createdAt), "MMM d, yyyy")}
                       </span>
-                      {note.linkedEventId && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Linked</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {note.isOwner &&
+                          note.members &&
+                          note.members.length > 0 && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              {note.members.length} shared
+                            </span>
+                          )}
+                        {!note.isOwner && (
+                          <span className="flex items-center gap-1 text-blue-500">
+                            <Share2 className="h-3 w-3" />
+                            Shared with you
+                          </span>
+                        )}
+                        {note.linkedEventId && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>Linked</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -256,6 +329,19 @@ export default function NotesPage() {
         onOpenChange={setEditDialogOpen}
         note={selectedNote || undefined}
         onSuccess={handleSuccess}
+      />
+
+      <ShareNoteDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        note={shareNote ? { id: shareNote.id, title: shareNote.title } : null}
+      />
+
+      <NoteDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        note={viewNote || undefined}
+        readOnly={true}
       />
     </div>
   );

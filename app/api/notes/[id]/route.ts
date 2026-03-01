@@ -5,8 +5,28 @@ import { getSession } from "@/app/lib/utils/session";
 import { updateNoteSchema } from "@/app/lib/validations/note";
 
 /**
+ * Returns "owner" | "editor" | "viewer" | null for a given user on a note.
+ */
+async function getNoteAccess(
+  noteId: string,
+  userId: string
+): Promise<{ note: typeof Note.prototype | null; access: string | null }> {
+  const note = await Note.findById(noteId);
+  if (!note) return { note: null, access: null };
+
+  if (note.userId.toString() === userId) return { note, access: "owner" };
+
+  const member = note.members?.find(
+    (m: { userId: string }) => m.userId === userId
+  );
+  if (member) return { note, access: member.role };
+
+  return { note: null, access: null };
+}
+
+/**
  * GET /api/notes/[id]
- * Get a specific note
+ * Get a specific note (owner + any member)
  */
 export async function GET(
   request: NextRequest,
@@ -24,12 +44,9 @@ export async function GET(
     const { id } = await params;
     await connectDB();
 
-    const note = await Note.findOne({
-      _id: id,
-      userId: session.userId,
-    }).lean();
+    const { note, access } = await getNoteAccess(id, session.userId);
 
-    if (!note) {
+    if (!note || !access) {
       return NextResponse.json(
         { success: false, error: "Note not found" },
         { status: 404 }
@@ -41,10 +58,19 @@ export async function GET(
       data: {
         note: {
           id: note._id.toString(),
+          userId: note.userId.toString(),
           title: note.title,
           content: note.content,
           category: note.category,
           linkedEventId: note.linkedEventId?.toString(),
+          members: (note.members || []).map(
+            (m: { userId: string; role: string; addedAt: Date }) => ({
+              userId: m.userId,
+              role: m.role,
+              addedAt: m.addedAt,
+            })
+          ),
+          isOwner: access === "owner",
           createdAt: note.createdAt,
           updatedAt: note.updatedAt,
         },
@@ -82,15 +108,22 @@ export async function PATCH(
 
     await connectDB();
 
-    const note = await Note.findOne({
-      _id: id,
-      userId: session.userId,
-    });
+    const { note, access } = await getNoteAccess(id, session.userId);
 
-    if (!note) {
+    if (!note || !access) {
       return NextResponse.json(
         { success: false, error: "Note not found" },
         { status: 404 }
+      );
+    }
+
+    if (access === "viewer") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You do not have permission to edit this note.",
+        },
+        { status: 403 }
       );
     }
 
@@ -114,10 +147,19 @@ export async function PATCH(
       data: {
         note: {
           id: note._id.toString(),
+          userId: note.userId.toString(),
           title: note.title,
           content: note.content,
           category: note.category,
           linkedEventId: note.linkedEventId?.toString(),
+          members: (note.members || []).map(
+            (m: { userId: string; role: string; addedAt: Date }) => ({
+              userId: m.userId,
+              role: m.role,
+              addedAt: m.addedAt,
+            })
+          ),
+          isOwner: access === "owner",
           createdAt: note.createdAt,
           updatedAt: note.updatedAt,
         },
@@ -168,6 +210,7 @@ export async function DELETE(
     const { id } = await params;
     await connectDB();
 
+    // Only the owner can delete a note
     const note = await Note.findOneAndDelete({
       _id: id,
       userId: session.userId,

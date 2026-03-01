@@ -35,6 +35,7 @@ interface NoteDialogProps {
   };
   linkedEventId?: string;
   onSuccess?: () => void;
+  readOnly?: boolean;
 }
 
 type NoteFormData = {
@@ -49,6 +50,7 @@ export function NoteDialog({
   note,
   linkedEventId,
   onSuccess,
+  readOnly = false,
 }: NoteDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
@@ -150,7 +152,11 @@ export function NoteDialog({
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Note" : "Create New Note"}
+            {readOnly
+              ? "View Note"
+              : isEditing
+                ? "Edit Note"
+                : "Create New Note"}
           </DialogTitle>
         </DialogHeader>
 
@@ -167,8 +173,8 @@ export function NoteDialog({
                     <Input
                       placeholder="Note title"
                       {...field}
-                      disabled={isSubmitting}
-                      autoFocus
+                      disabled={isSubmitting || readOnly}
+                      autoFocus={!readOnly}
                     />
                   </FormControl>
                   <FormMessage />
@@ -195,8 +201,8 @@ export function NoteDialog({
                                 field.value === cat ? "default" : "outline"
                               }
                               size="sm"
-                              onClick={() => field.onChange(cat)}
-                              disabled={isSubmitting}
+                              onClick={() => !readOnly && field.onChange(cat)}
+                              disabled={isSubmitting || readOnly}
                             >
                               {field.value === cat && (
                                 <Check className="h-3 w-3 mr-1" />
@@ -204,17 +210,19 @@ export function NoteDialog({
                               {cat}
                             </Button>
                           ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowCategoryInput(true)}
-                            disabled={isSubmitting}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            New Category
-                          </Button>
-                          {field.value && (
+                          {!readOnly && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowCategoryInput(true)}
+                              disabled={isSubmitting}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              New Category
+                            </Button>
+                          )}
+                          {!readOnly && field.value && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -286,7 +294,7 @@ export function NoteDialog({
                       content={field.value}
                       onChange={field.onChange}
                       placeholder="Write your note here..."
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || readOnly}
                     />
                   </FormControl>
                   <FormMessage />
@@ -296,24 +304,36 @@ export function NoteDialog({
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    {isEditing ? "Updating..." : "Creating..."}
-                  </>
-                ) : (
-                  <>{isEditing ? "Update Note" : "Create Note"}</>
-                )}
-              </Button>
+              {readOnly ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        {isEditing ? "Updating..." : "Creating..."}
+                      </>
+                    ) : (
+                      <>{isEditing ? "Update Note" : "Create Note"}</>
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </form>
         </Form>
