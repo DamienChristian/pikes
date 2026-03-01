@@ -56,6 +56,16 @@ export async function GET(
             deadline: event.deadline,
             completed: event.completed,
             category: event.category,
+            priority: event.priority,
+            isRecurring: event.isRecurring,
+            recurrencePattern: event.recurrencePattern,
+            recurrenceInterval: event.recurrenceInterval,
+            recurrenceDaysOfWeek: event.recurrenceDaysOfWeek,
+            recurrenceDayOfMonth: event.recurrenceDayOfMonth,
+            recurrenceEndDate: event.recurrenceEndDate,
+            recurrenceCount: event.recurrenceCount,
+            parentEventId: event.parentEventId,
+            originalDate: event.originalDate,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },
@@ -138,12 +148,52 @@ export async function PATCH(
       updateData.completed = validatedData.completed;
     if (validatedData.category !== undefined)
       updateData.category = validatedData.category;
+    if (validatedData.priority !== undefined)
+      updateData.priority = validatedData.priority;
+    if (validatedData.isRecurring !== undefined)
+      updateData.isRecurring = validatedData.isRecurring;
+    if (validatedData.recurrencePattern !== undefined)
+      updateData.recurrencePattern = validatedData.recurrencePattern;
+    if (validatedData.recurrenceInterval !== undefined)
+      updateData.recurrenceInterval = validatedData.recurrenceInterval;
+    if (validatedData.recurrenceDaysOfWeek !== undefined)
+      updateData.recurrenceDaysOfWeek = validatedData.recurrenceDaysOfWeek;
+    if (validatedData.recurrenceDayOfMonth !== undefined)
+      updateData.recurrenceDayOfMonth = validatedData.recurrenceDayOfMonth;
+    if (validatedData.recurrenceEndDate !== undefined)
+      updateData.recurrenceEndDate = validatedData.recurrenceEndDate;
+    if (validatedData.recurrenceCount !== undefined)
+      updateData.recurrenceCount = validatedData.recurrenceCount;
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
+    // If recurrence is being turned off, clear all recurrence fields
+    const unsetData: Record<string, 1> = {};
+    if (validatedData.isRecurring === false) {
+      unsetData.recurrencePattern = 1;
+      unsetData.recurrenceInterval = 1;
+      unsetData.recurrenceDaysOfWeek = 1;
+      unsetData.recurrenceDayOfMonth = 1;
+      unsetData.recurrenceEndDate = 1;
+      unsetData.recurrenceCount = 1;
+      unsetData.parentEventId = 1;
+      unsetData.originalDate = 1;
+      // Remove recurrence keys from updateData so they don't conflict with $unset
+      delete updateData.recurrencePattern;
+      delete updateData.recurrenceInterval;
+      delete updateData.recurrenceDaysOfWeek;
+      delete updateData.recurrenceDayOfMonth;
+      delete updateData.recurrenceEndDate;
+      delete updateData.recurrenceCount;
+    }
+
+    const updateOps: Record<string, unknown> = { $set: updateData };
+    if (Object.keys(unsetData).length > 0) {
+      updateOps.$unset = unsetData;
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(id, updateOps, {
+      new: true,
+      runValidators: true,
+    });
 
     return NextResponse.json(
       {
@@ -162,6 +212,16 @@ export async function PATCH(
             deadline: updatedEvent!.deadline,
             completed: updatedEvent!.completed,
             category: updatedEvent!.category,
+            priority: updatedEvent!.priority,
+            isRecurring: updatedEvent!.isRecurring,
+            recurrencePattern: updatedEvent!.recurrencePattern,
+            recurrenceInterval: updatedEvent!.recurrenceInterval,
+            recurrenceDaysOfWeek: updatedEvent!.recurrenceDaysOfWeek,
+            recurrenceDayOfMonth: updatedEvent!.recurrenceDayOfMonth,
+            recurrenceEndDate: updatedEvent!.recurrenceEndDate,
+            recurrenceCount: updatedEvent!.recurrenceCount,
+            parentEventId: updatedEvent!.parentEventId,
+            originalDate: updatedEvent!.originalDate,
             createdAt: updatedEvent!.createdAt,
             updatedAt: updatedEvent!.updatedAt,
           },
@@ -238,6 +298,14 @@ export async function DELETE(
 
     // Delete event
     await Event.findByIdAndDelete(id);
+
+    // If this is a recurring parent, delete all child instances
+    if (event.isRecurring) {
+      await Event.deleteMany({
+        parentEventId: id,
+        userId: session.userId,
+      });
+    }
 
     return NextResponse.json(
       {
