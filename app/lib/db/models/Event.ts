@@ -1,9 +1,24 @@
 import mongoose, { Schema, Model } from "mongoose";
 import { CalendarEvent } from "@/app/types";
 
+export interface IEventMember {
+  userId: string;
+  role: "viewer" | "editor";
+  addedAt: Date;
+}
+
 export interface IEvent extends Omit<CalendarEvent, "id"> {
   _id: string;
 }
+
+const EventMemberSchema = new Schema<IEventMember>(
+  {
+    userId: { type: String, required: true },
+    role: { type: String, enum: ["viewer", "editor"], default: "viewer" },
+    addedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const EventSchema = new Schema<IEvent>(
   {
@@ -99,6 +114,11 @@ const EventSchema = new Schema<IEvent>(
       type: String, // Links to Calendar collection
       index: true,
     },
+    // Sharing
+    members: {
+      type: [EventMemberSchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
@@ -108,13 +128,16 @@ const EventSchema = new Schema<IEvent>(
 // Indexes for efficient querying
 EventSchema.index({ startDate: 1, endDate: 1 });
 EventSchema.index({ userId: 1, startDate: 1 });
+EventSchema.index({ "members.userId": 1 });
 
-// Validate that endDate is after startDate
 EventSchema.pre("save", function () {
   if (this.endDate < this.startDate) {
     throw new Error("End date must be after start date");
   }
 });
+
+// Delete cached model to pick up schema changes
+delete mongoose.models.Event;
 
 const Event: Model<IEvent> =
   mongoose.models.Event || mongoose.model<IEvent>("Event", EventSchema);

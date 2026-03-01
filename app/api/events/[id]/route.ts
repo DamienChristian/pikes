@@ -8,6 +8,8 @@ import { updateEventSchema } from "@/app/lib/validations/event";
 /**
  * Check if user has access to an event.
  * Returns "owner" | "editor" | "viewer" | null.
+ * Checks: event owner > event-level members > calendar-level members.
+ * The highest-privilege access is returned.
  */
 async function getEventAccess(
   eventId: string,
@@ -19,15 +21,35 @@ async function getEventAccess(
   // Owner of the event
   if (event.userId === userId) return { event, access: "owner" };
 
-  // Check via shared calendar
+  let access: string | null = null;
+
+  // Check event-level sharing (direct member)
+  const eventMembers =
+    (event.members as Array<{ userId: string; role: string }>) || [];
+  const eventMember = eventMembers.find((m) => m.userId === userId);
+  if (eventMember) {
+    access = eventMember.role; // "editor" or "viewer"
+  }
+
+  // Check via shared calendar (may upgrade access)
   if (event.calendarId) {
     const cal = await Calendar.findById(event.calendarId).lean();
     if (cal) {
-      const member = cal.members?.find((m) => m.userId === userId);
-      if (member) return { event, access: member.role };
+      // Calendar owner has full access
+      if (cal.userId === userId) {
+        return { event, access: "owner" };
+      }
+      const calMember = cal.members?.find((m) => m.userId === userId);
+      if (calMember) {
+        // Take the highest privilege: editor > viewer
+        if (!access || (calMember.role === "editor" && access === "viewer")) {
+          access = calMember.role;
+        }
+      }
     }
   }
 
+  if (access) return { event, access };
   return { event: null, access: null };
 }
 
@@ -60,6 +82,7 @@ export async function GET(
       );
     }
 
+    const isEventOwner = (event.userId as string) === session.userId;
     return NextResponse.json(
       {
         success: true,
@@ -88,6 +111,7 @@ export async function GET(
             parentEventId: event.parentEventId,
             originalDate: event.originalDate,
             calendarId: event.calendarId,
+            members: event.members || [],
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },
@@ -258,6 +282,7 @@ export async function PATCH(
             parentEventId: updatedEvent!.parentEventId,
             originalDate: updatedEvent!.originalDate,
             calendarId: updatedEvent!.calendarId,
+            members: updatedEvent!.members || [],
             createdAt: updatedEvent!.createdAt,
             updatedAt: updatedEvent!.updatedAt,
           },

@@ -38,24 +38,42 @@ export async function GET(request: NextRequest) {
     }
 
     // When fetching notes linked to an event, check if the user has access
-    // to the event's calendar (via sharing). If so, show all notes for that
-    // event regardless of who created them.
+    // to the event via calendar sharing OR event-level sharing. If so, show
+    // all notes for that event regardless of who created them.
     if (linkedEventId) {
       query.linkedEventId = linkedEventId;
 
       const event = await Event.findById(linkedEventId).lean();
-      if (event && event.calendarId) {
-        const calendar = await Calendar.findById(event.calendarId).lean();
-        if (calendar) {
-          const isOwner = calendar.userId.toString() === session.userId;
-          const isMember = calendar.members?.some(
-            (m: { userId: mongoose.Types.ObjectId }) =>
-              m.userId.toString() === session.userId
-          );
-          if (isOwner || isMember) {
-            // User has access to this calendar — show all notes for the event
-            delete query.userId;
+      if (event) {
+        let hasAccess = false;
+
+        // Check event-level sharing (direct member)
+        const eventMembers =
+          (event.members as Array<{
+            userId: string | mongoose.Types.ObjectId;
+          }>) || [];
+        if (eventMembers.some((m) => m.userId.toString() === session.userId)) {
+          hasAccess = true;
+        }
+
+        // Check calendar-level sharing
+        if (!hasAccess && event.calendarId) {
+          const calendar = await Calendar.findById(event.calendarId).lean();
+          if (calendar) {
+            const isCalOwner = calendar.userId.toString() === session.userId;
+            const isCalMember = calendar.members?.some(
+              (m: { userId: mongoose.Types.ObjectId }) =>
+                m.userId.toString() === session.userId
+            );
+            if (isCalOwner || isCalMember) {
+              hasAccess = true;
+            }
           }
+        }
+
+        if (hasAccess) {
+          // User has access — show all notes for the event
+          delete query.userId;
         }
       }
     }

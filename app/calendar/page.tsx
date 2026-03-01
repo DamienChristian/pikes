@@ -71,10 +71,11 @@ export default function CalendarPage() {
     dispatch(fetchCalendars());
   }, [dispatch]);
 
-  // Handle ?join=<token> query param for join-by-link
+  // Handle ?join=<token> query param for join-by-link (calendars)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const joinToken = params.get("join");
+
     if (!joinToken) return;
 
     // Clean the URL immediately

@@ -38,6 +38,20 @@ export interface UserCalendar {
 }
 
 /**
+ * Event Member Types
+ */
+export interface EventMember {
+  userId: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  role: "viewer" | "editor";
+  addedAt: Date;
+}
+
+/**
  * Calendar Event Types
  */
 export type EventType = "event" | "task";
@@ -53,6 +67,8 @@ export interface CalendarEvent {
   location?: string;
   userId: string;
   calendarId?: string;
+  // Sharing
+  members: EventMember[];
   createdAt: Date;
   updatedAt: Date;
   type: EventType;

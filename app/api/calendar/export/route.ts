@@ -81,6 +81,11 @@ export async function GET(request: NextRequest) {
       parentEventId: event.parentEventId,
       originalDate: event.originalDate,
       calendarId: event.calendarId?.toString(),
+      members: (event.members || []).map((m) => ({
+        userId: String(m.userId),
+        role: m.role as "viewer" | "editor",
+        addedAt: m.addedAt,
+      })),
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
     }));

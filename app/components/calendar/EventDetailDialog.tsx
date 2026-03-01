@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Clock, MapPin, Edit, Trash2, FileText } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Edit,
+  Trash2,
+  FileText,
+  Share2,
+} from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner";
 import {
@@ -14,6 +22,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { UserCalendar } from "@/app/types";
 import { useAppSelector } from "@/app/lib/store/hooks";
+import { ShareEventDialog } from "./ShareEventDialog";
 
 interface EventDetailDialogProps {
   open: boolean;
@@ -28,6 +37,7 @@ interface EventDetailDialogProps {
     color?: string;
     location?: string;
     calendarId?: string;
+    userId?: string;
   } | null;
   calendars?: UserCalendar[];
   /** @deprecated calendars prop is ignored — reads from Redux store */
@@ -44,6 +54,7 @@ export function EventDetailDialog({
 }: EventDetailDialogProps) {
   const calendars = useAppSelector((state) => state.calendars.items);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [notes, setNotes] = useState<
     Array<{ id: string; title: string; content: string; category?: string }>
   >([]);
@@ -84,14 +95,21 @@ export function EventDetailDialog({
 
   if (!event) return null;
 
-  // Determine if the user can edit/delete this event based on calendar role
+  // Derive the current user's ID from their owned calendars
+  const ownedCalendar = calendars.find((c) => c.role === "owner");
+  const currentUserId = ownedCalendar?.userId;
+
+  // Determine if the user can edit/delete this event
+  // Priority: event owner > calendar owner/editor > event-level editor
   const eventCalendar = event.calendarId
     ? calendars.find((c) => c.id === event.calendarId)
     : undefined;
-  const canEdit =
-    !eventCalendar ||
-    eventCalendar.role === "owner" ||
-    eventCalendar.role === "editor";
+
+  const isEventOwner = !!(currentUserId && event.userId === currentUserId);
+  const hasCalendarEditAccess =
+    eventCalendar?.role === "owner" || eventCalendar?.role === "editor";
+
+  const canEdit = isEventOwner || hasCalendarEditAccess || false;
 
   const startDate =
     typeof event.startDate === "string"
@@ -291,6 +309,15 @@ export function EventDetailDialog({
           )}
 
           <div className="flex gap-2">
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={() => setShareDialogOpen(true)}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
@@ -303,6 +330,21 @@ export function EventDetailDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Share Event Dialog */}
+      <ShareEventDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        event={
+          event
+            ? {
+                id: event.id,
+                title: event.title,
+                calendarId: event.calendarId,
+              }
+            : null
+        }
+      />
     </Dialog>
   );
 }

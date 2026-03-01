@@ -52,8 +52,10 @@ export async function GET(request: NextRequest) {
     ];
 
     // Build query: own events OR events in any accessible calendar
+    // OR events shared directly with this user (event-level sharing)
     const orConditions: Record<string, unknown>[] = [
       { userId: session.userId },
+      { "members.userId": session.userId },
     ];
     if (accessibleCalendarIds.length > 0) {
       orConditions.push({ calendarId: { $in: accessibleCalendarIds } });
@@ -81,33 +83,37 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Format events for response
-    const formattedEvents = events.map((event) => ({
-      id: event._id.toString(),
-      title: event.title,
-      description: event.description,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      allDay: event.allDay,
-      color: event.color,
-      location: event.location,
-      type: event.type,
-      deadline: event.deadline,
-      completed: event.completed,
-      category: event.category,
-      priority: event.priority,
-      isRecurring: event.isRecurring,
-      recurrencePattern: event.recurrencePattern,
-      recurrenceInterval: event.recurrenceInterval,
-      recurrenceDaysOfWeek: event.recurrenceDaysOfWeek,
-      recurrenceDayOfMonth: event.recurrenceDayOfMonth,
-      recurrenceEndDate: event.recurrenceEndDate,
-      recurrenceCount: event.recurrenceCount,
-      parentEventId: event.parentEventId,
-      originalDate: event.originalDate,
-      calendarId: event.calendarId,
-      createdAt: event.createdAt,
-      updatedAt: event.updatedAt,
-    }));
+    const formattedEvents = events.map((event) => {
+      const isEventOwner = event.userId === session.userId;
+      return {
+        id: event._id.toString(),
+        title: event.title,
+        description: event.description,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        allDay: event.allDay,
+        color: event.color,
+        location: event.location,
+        type: event.type,
+        deadline: event.deadline,
+        completed: event.completed,
+        category: event.category,
+        priority: event.priority,
+        isRecurring: event.isRecurring,
+        recurrencePattern: event.recurrencePattern,
+        recurrenceInterval: event.recurrenceInterval,
+        recurrenceDaysOfWeek: event.recurrenceDaysOfWeek,
+        recurrenceDayOfMonth: event.recurrenceDayOfMonth,
+        recurrenceEndDate: event.recurrenceEndDate,
+        recurrenceCount: event.recurrenceCount,
+        parentEventId: event.parentEventId,
+        originalDate: event.originalDate,
+        calendarId: event.calendarId,
+        members: event.members || [],
+        createdAt: event.createdAt,
+        updatedAt: event.updatedAt,
+      };
+    });
 
     return NextResponse.json(
       {
@@ -255,6 +261,7 @@ export async function POST(request: NextRequest) {
             parentEventId: event.parentEventId,
             originalDate: event.originalDate,
             calendarId: event.calendarId,
+            members: event.members || [],
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },
