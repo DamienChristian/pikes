@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/app/components/ui/sonner";
 import { Header } from "@/app/components/layout/Header";
 import { Footer } from "@/app/components/layout/Footer";
+import { StoreProvider } from "@/app/lib/store/StoreProvider";
 import { getSession } from "@/app/lib/utils/session";
 import "./globals.css";
 
@@ -117,10 +118,12 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
-        <Header session={session} />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <Toaster position="top-right" richColors closeButton />
+        <StoreProvider>
+          <Header session={session} />
+          <main className="flex-1">{children}</main>
+          <Footer />
+          <Toaster position="top-right" richColors closeButton />
+        </StoreProvider>
       </body>
     </html>
   );

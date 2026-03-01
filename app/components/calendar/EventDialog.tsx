@@ -33,6 +33,8 @@ import { Input } from "@/app/components/ui/input";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { toast } from "sonner";
 import { UserCalendar } from "@/app/types";
+import { CalendarDialog } from "@/app/components/calendar/CalendarDialog";
+import { useAppSelector } from "@/app/lib/store/hooks";
 
 interface EventDialogProps {
   open: boolean;
@@ -61,6 +63,7 @@ interface EventDialogProps {
     recurrenceCount?: number;
   };
   calendars?: UserCalendar[];
+  /** @deprecated calendars prop is ignored — reads from Redux store */
   onSuccess?: () => void;
 }
 
@@ -102,9 +105,9 @@ export function EventDialog({
   onOpenChange,
   defaultDate,
   event,
-  calendars,
   onSuccess,
 }: EventDialogProps) {
+  const calendars = useAppSelector((state) => state.calendars.items);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategoryInput, setShowCategoryInput] = useState(false);
@@ -120,7 +123,7 @@ export function EventDialog({
   >([]);
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const isEditing = !!(event && event.id);
   const lastChangedField = useRef<"startDate" | "endDate" | "deadline" | null>(
     null
@@ -295,8 +298,8 @@ export function EventDialog({
       setShowCategoryInput(false);
       setNewCategory("");
       setSelectedNoteIds([]);
-      setCreatedEventId(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event, defaultStartDate, defaultEndDate, form]);
 
   async function onSubmit(data: EventFormData) {
@@ -570,6 +573,17 @@ export function EventDialog({
                             {cal.name}
                           </Button>
                         ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCalendarDialogOpen(true)}
+                          disabled={isSubmitting}
+                          className="gap-1"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          New
+                        </Button>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -1261,6 +1275,16 @@ export function EventDialog({
             .catch((error) => {
               console.error("Error fetching notes:", error);
             });
+        }}
+      />
+
+      {/* Calendar Dialog for creating new calendars */}
+      <CalendarDialog
+        open={calendarDialogOpen}
+        onOpenChange={setCalendarDialogOpen}
+        onSuccess={(newCalendar) => {
+          // Select the newly created calendar
+          form.setValue("calendarId", newCalendar.id);
         }}
       />
     </Dialog>

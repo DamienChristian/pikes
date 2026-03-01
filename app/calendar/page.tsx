@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   CalendarDays,
@@ -19,17 +19,29 @@ import { EventDialog } from "@/app/components/calendar/EventDialog";
 import { EventDetailDialog } from "@/app/components/calendar/EventDetailDialog";
 import { MiniCalendar } from "@/app/components/calendar/MiniCalendar";
 import { ImportExportDialog } from "@/app/components/calendar/ImportExportDialog";
-import { CalendarEvent, UserCalendar } from "@/app/types";
+import { CalendarDialog } from "@/app/components/calendar/CalendarDialog";
+import { CalendarEvent } from "@/app/types";
 import { toast } from "sonner";
 import { startOfDay } from "date-fns";
+import { useAppDispatch, useAppSelector } from "@/app/lib/store/hooks";
+import {
+  fetchCalendars,
+  optimisticToggleVisibility,
+  revertToggleVisibility,
+  toggleCalendarVisibility,
+  deleteCalendar as deleteCalendarThunk,
+} from "@/app/lib/store/calendarsSlice";
+import { fetchEvents } from "@/app/lib/store/eventsSlice";
 
 type ViewMode = "month" | "week" | "day";
 
 export default function CalendarPage() {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [calendars, setCalendars] = useState<UserCalendar[]>([]);
+  const dispatch = useAppDispatch();
+  const calendars = useAppSelector((state) => state.calendars.items);
+  const events = useAppSelector((state) => state.events.items);
+  const loading = useAppSelector((state) => state.events.loading);
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("month");
 
   // Dialog states
@@ -37,53 +49,16 @@ export default function CalendarPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [importExportDialogOpen, setImportExportDialogOpen] = useState(false);
+  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
   const [createDate, setCreateDate] = useState<Date | undefined>();
 
-  // Fetch calendars
-  const fetchCalendars = useCallback(async () => {
-    try {
-      const response = await fetch("/api/calendars");
-      if (response.ok) {
-        const data = await response.json();
-        setCalendars(data.data.calendars);
-      }
-    } catch (error) {
-      console.error("Failed to fetch calendars:", error);
-    }
-  }, []);
-
-  // Fetch events
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/events?limit=100");
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          window.location.href = "/auth/login";
-          return;
-        }
-        throw new Error("Failed to fetch events");
-      }
-
-      const data = await response.json();
-      setEvents(data.data.events);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load events"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchEvents();
-    fetchCalendars();
-  }, [fetchCalendars]);
+    dispatch(fetchEvents());
+    dispatch(fetchCalendars());
+  }, [dispatch]);
 
   const handleCreateEvent = (date: Date, endDate?: Date) => {
     setCreateDate(date);
@@ -119,8 +94,8 @@ export default function CalendarPage() {
   };
 
   const handleSuccess = () => {
-    fetchEvents();
-    fetchCalendars();
+    dispatch(fetchEvents());
+    dispatch(fetchCalendars());
     handleDialogClose();
   };
 
@@ -130,25 +105,14 @@ export default function CalendarPage() {
     if (!cal) return;
 
     // Optimistic update
-    setCalendars((prev) =>
-      prev.map((c) =>
-        c.id === calendarId ? { ...c, isVisible: !c.isVisible } : c
-      )
-    );
+    dispatch(optimisticToggleVisibility(calendarId));
 
     try {
-      const response = await fetch(`/api/calendars/${calendarId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isVisible: !cal.isVisible }),
-      });
-      if (!response.ok) throw new Error("Failed to update");
+      await dispatch(toggleCalendarVisibility(calendarId)).unwrap();
     } catch {
       // Revert on error
-      setCalendars((prev) =>
-        prev.map((c) =>
-          c.id === calendarId ? { ...c, isVisible: cal.isVisible } : c
-        )
+      dispatch(
+        revertToggleVisibility({ calendarId, isVisible: cal.isVisible })
       );
       toast.error("Failed to update calendar visibility");
     }
@@ -167,13 +131,9 @@ export default function CalendarPage() {
     if (!confirm(`Delete "${cal.name}" and all its events?`)) return;
 
     try {
-      const response = await fetch(`/api/calendars/${calendarId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete");
+      await dispatch(deleteCalendarThunk(calendarId)).unwrap();
       toast.success(`Calendar "${cal.name}" deleted`);
-      fetchCalendars();
-      fetchEvents();
+      dispatch(fetchEvents());
     } catch {
       toast.error("Failed to delete calendar");
     }
@@ -237,7 +197,18 @@ export default function CalendarPage() {
 
           {/* My Calendars */}
           <div className="lg:block bg-card border rounded-lg p-4 space-y-3">
-            <h3 className="font-semibold text-sm">My Calendars</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">My Calendars</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setCalendarDialogOpen(true)}
+                title="New calendar"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <div className="space-y-1">
               {calendars.map((cal) => (
                 <div
@@ -370,7 +341,6 @@ export default function CalendarPage() {
             ? selectedEvent
             : undefined
         }
-        calendars={calendars}
         onSuccess={handleSuccess}
       />
 
@@ -379,7 +349,6 @@ export default function CalendarPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         event={selectedEvent || undefined}
-        calendars={calendars}
         onSuccess={handleSuccess}
       />
 
@@ -388,7 +357,6 @@ export default function CalendarPage() {
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         event={selectedEvent}
-        calendars={calendars}
         onEdit={handleEditEvent}
         onDelete={handleSuccess}
       />
@@ -398,9 +366,15 @@ export default function CalendarPage() {
         isOpen={importExportDialogOpen}
         onClose={() => setImportExportDialogOpen(false)}
         onImportSuccess={() => {
-          fetchEvents();
-          fetchCalendars();
+          dispatch(fetchEvents());
+          dispatch(fetchCalendars());
         }}
+      />
+
+      {/* Create Calendar Dialog */}
+      <CalendarDialog
+        open={calendarDialogOpen}
+        onOpenChange={setCalendarDialogOpen}
       />
     </div>
   );

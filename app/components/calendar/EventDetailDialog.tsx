@@ -13,6 +13,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { UserCalendar } from "@/app/types";
+import { useAppSelector } from "@/app/lib/store/hooks";
 
 interface EventDetailDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ interface EventDetailDialogProps {
     calendarId?: string;
   } | null;
   calendars?: UserCalendar[];
+  /** @deprecated calendars prop is ignored — reads from Redux store */
   onEdit?: () => void;
   onDelete?: () => void;
 }
@@ -37,10 +39,10 @@ export function EventDetailDialog({
   open,
   onOpenChange,
   event,
-  calendars,
   onEdit,
   onDelete,
 }: EventDetailDialogProps) {
+  const calendars = useAppSelector((state) => state.calendars.items);
   const [isDeleting, setIsDeleting] = useState(false);
   const [notes, setNotes] = useState<
     Array<{ id: string; title: string; content: string; category?: string }>
@@ -72,29 +74,6 @@ export function EventDetailDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event]);
-
-  const handleDeleteNote = async (noteId: string) => {
-    if (!confirm("Are you sure you want to delete this note?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/notes/${noteId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete note");
-      }
-
-      toast.success("Note deleted successfully!");
-      fetchNotes();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete note"
-      );
-    }
-  };
 
   const getTextPreview = (html: string, maxLength: number = 100) => {
     const text = html.replace(/<[^>]*>/g, "");
@@ -203,7 +182,6 @@ export function EventDetailDialog({
 
           {/* Calendar */}
           {event.calendarId &&
-            calendars &&
             (() => {
               const cal = calendars.find((c) => c.id === event.calendarId);
               if (!cal) return null;
