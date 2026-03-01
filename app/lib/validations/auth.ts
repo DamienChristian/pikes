@@ -4,6 +4,18 @@ import { z } from "zod";
  * Authentication Validation Schemas
  */
 
+// Username Schema (reusable)
+export const usernameSchema = z
+  .string()
+  .min(3, "Username must be at least 3 characters")
+  .max(30, "Username must be less than 30 characters")
+  .regex(
+    /^[a-zA-Z0-9_]+$/,
+    "Username can only contain letters, numbers, and underscores"
+  )
+  .toLowerCase()
+  .trim();
+
 // Signup Schema
 export const signupSchema = z
   .object({
@@ -13,6 +25,7 @@ export const signupSchema = z
       .min(1, "Email is required")
       .toLowerCase()
       .trim(),
+    username: usernameSchema,
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")

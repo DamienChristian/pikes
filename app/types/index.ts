@@ -81,6 +81,7 @@ export interface UpdateEventInput extends Partial<CreateEventInput> {
 export interface User {
   id: string;
   email: string;
+  username: string;
   firstName: string;
   lastName: string;
   avatarUrl?: string;
@@ -92,6 +93,7 @@ export interface User {
 export interface SessionUser {
   userId: string;
   email: string;
+  username: string;
   firstName: string;
   lastName: string;
   avatarUrl?: string;

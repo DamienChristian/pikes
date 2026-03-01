@@ -31,7 +31,7 @@ import {
 } from "@/app/components/ui/form";
 import { Input } from "@/app/components/ui/input";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Mail } from "lucide-react";
+import { CheckCircle2, XCircle, Mail, AtSign } from "lucide-react";
 
 interface ProfilePageProps {
   session: SessionUser;
@@ -212,6 +212,25 @@ export function ProfilePage({ session }: ProfilePageProps) {
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none">
+                    Username
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={session.username}
+                        disabled={true}
+                        className="bg-muted cursor-not-allowed pl-9"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Username cannot be changed
+                  </p>
                 </div>
 
                 <div className="space-y-2">

@@ -55,12 +55,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if username is taken
+    const existingUsername = await User.findOne({
+      username: validatedData.username,
+    });
+    if (existingUsername) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Username is already taken",
+        },
+        { status: 400 }
+      );
+    }
+
     // Create new user
     const verificationToken = nanoid(32);
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const user = await User.create({
       email: validatedData.email,
+      username: validatedData.username,
       password: validatedData.password,
       firstName: validatedData.firstName,
       lastName: validatedData.lastName,
@@ -91,6 +106,7 @@ export async function POST(request: NextRequest) {
           user: {
             id: user._id.toString(),
             email: user.email,
+            username: user.username,
             firstName: user.firstName,
             lastName: user.lastName,
             emailVerified: user.emailVerified,

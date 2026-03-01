@@ -20,6 +20,7 @@ const getSecret = () => {
 export interface SessionData {
   userId: string;
   email: string;
+  username: string;
   firstName: string;
   lastName: string;
   avatarUrl?: string;
@@ -83,7 +84,7 @@ export async function verifySession(
 
     // Get user data
     const user = await User.findById(payload.userId).select(
-      "email firstName lastName avatarUrl emailVerified"
+      "email username firstName lastName avatarUrl emailVerified"
     );
 
     if (!user) {
@@ -93,6 +94,7 @@ export async function verifySession(
     return {
       userId: user._id.toString(),
       email: user.email,
+      username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,

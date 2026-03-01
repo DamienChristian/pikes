@@ -40,6 +40,7 @@ export async function GET() {
           user: {
             id: user._id.toString(),
             email: user.email,
+            username: user.username,
             firstName: user.firstName,
             lastName: user.lastName,
             avatarUrl: user.avatarUrl,
@@ -110,6 +111,7 @@ export async function PATCH(request: NextRequest) {
           user: {
             id: user._id.toString(),
             email: user.email,
+            username: user.username,
             firstName: user.firstName,
             lastName: user.lastName,
             avatarUrl: user.avatarUrl,
