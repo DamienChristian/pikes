@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/app/components/ui/button";
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner";
@@ -23,7 +23,7 @@ import { Checkbox } from "@/app/components/ui/checkbox";
 import { toast } from "sonner";
 import { UserCalendar } from "@/app/types";
 import { useAppDispatch } from "@/app/lib/store/hooks";
-import { createCalendar } from "@/app/lib/store/calendarsSlice";
+import { fetchCalendars } from "@/app/lib/store/calendarsSlice";
 
 const CALENDAR_COLORS = [
   { name: "Blue", value: "#3B82F6" },
@@ -36,79 +36,94 @@ const CALENDAR_COLORS = [
   { name: "Teal", value: "#14B8A6" },
 ];
 
-interface CalendarDialogProps {
+interface CalendarSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: (calendar: UserCalendar) => void;
+  calendar: UserCalendar | null;
 }
 
-type CalendarFormData = {
+type SettingsFormData = {
   name: string;
   color: string;
   isPublicJoinEnabled: boolean;
   defaultJoinRole: "viewer" | "editor";
 };
 
-export function CalendarDialog({
+export function CalendarSettingsDialog({
   open,
   onOpenChange,
-  onSuccess,
-}: CalendarDialogProps) {
+  calendar,
+}: CalendarSettingsDialogProps) {
   const dispatch = useAppDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdCalendar, setCreatedCalendar] = useState<UserCalendar | null>(
-    null
-  );
 
-  const form = useForm<CalendarFormData>({
+  const form = useForm<SettingsFormData>({
     defaultValues: {
       name: "",
-      color: CALENDAR_COLORS[0].value,
+      color: "#3B82F6",
       isPublicJoinEnabled: false,
       defaultJoinRole: "viewer",
     },
   });
 
-  // Watch the public join toggle to show share options in real-time
+  // Watch the public join toggle to show share link in real-time
   const isPublicJoinEnabled = useWatch({
     control: form.control,
     name: "isPublicJoinEnabled",
   });
 
-  async function onSubmit(data: CalendarFormData) {
-    setIsSubmitting(true);
+  useEffect(() => {
+    if (open && calendar) {
+      form.reset({
+        name: calendar.name,
+        color: calendar.color,
+        isPublicJoinEnabled: calendar.isPublicJoinEnabled || false,
+        defaultJoinRole: calendar.defaultJoinRole || "viewer",
+      });
+    }
+  }, [open, calendar, form]);
 
+  async function onSubmit(data: SettingsFormData) {
+    if (!calendar) return;
+    setIsSubmitting(true);
     try {
-      const newCalendar = await dispatch(
-        createCalendar({
+      const response = await fetch(`/api/calendars/${calendar.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: data.name.trim(),
           color: data.color,
           isPublicJoinEnabled: data.isPublicJoinEnabled,
           defaultJoinRole: data.defaultJoinRole,
-        })
-      ).unwrap();
-
-      toast.success(`Calendar "${data.name}" created`);
-      setCreatedCalendar(newCalendar);
-      form.reset();
-      onSuccess?.(newCalendar);
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update calendar");
+      }
+      toast.success("Calendar updated");
+      dispatch(fetchCalendars());
+      onOpenChange(false);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to create calendar"
+        error instanceof Error ? error.message : "Failed to update calendar"
       );
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (!calendar) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Calendar</DialogTitle>
+          <DialogTitle>Calendar Settings</DialogTitle>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -123,12 +138,7 @@ export function CalendarDialog({
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Work, School, Fitness..."
-                      {...field}
-                      disabled={isSubmitting}
-                      autoFocus
-                    />
+                    <Input placeholder="Calendar name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,24 +153,22 @@ export function CalendarDialog({
                   <FormLabel>Color</FormLabel>
                   <FormControl>
                     <div className="flex flex-wrap gap-2">
-                      {CALENDAR_COLORS.map((c) => (
+                      {CALENDAR_COLORS.map((color) => (
                         <button
-                          key={c.value}
+                          key={color.value}
                           type="button"
-                          onClick={() => field.onChange(c.value)}
-                          disabled={isSubmitting}
+                          onClick={() => field.onChange(color.value)}
                           className={`w-8 h-8 rounded-full border-2 transition-all ${
-                            field.value === c.value
+                            field.value === color.value
                               ? "border-foreground scale-110"
                               : "border-transparent hover:scale-105"
                           }`}
-                          style={{ backgroundColor: c.value }}
-                          title={c.name}
+                          style={{ backgroundColor: color.value }}
+                          title={color.name}
                         />
                       ))}
                     </div>
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -174,7 +182,6 @@ export function CalendarDialog({
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      disabled={isSubmitting}
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
@@ -205,7 +212,6 @@ export function CalendarDialog({
                               value="viewer"
                               checked={field.value === "viewer"}
                               onChange={() => field.onChange("viewer")}
-                              disabled={isSubmitting}
                               className="accent-primary"
                             />
                             <span className="text-sm">Viewer</span>
@@ -216,7 +222,6 @@ export function CalendarDialog({
                               value="editor"
                               checked={field.value === "editor"}
                               onChange={() => field.onChange("editor")}
-                              disabled={isSubmitting}
                               className="accent-primary"
                             />
                             <span className="text-sm">Editor</span>
@@ -226,34 +231,32 @@ export function CalendarDialog({
                     </FormItem>
                   )}
                 />
-              </div>
-            )}
 
-            {createdCalendar && createdCalendar.shareToken && (
-              <div className="space-y-2 rounded-md border p-3 bg-green-50 dark:bg-green-950/20">
-                <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                  ✓ Calendar created! Share this link:
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/calendar?join=${createdCalendar.shareToken}`}
-                    className="text-xs"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        `${window.location.origin}/calendar?join=${createdCalendar.shareToken}`
-                      );
-                      toast.success("Link copied to clipboard");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
+                {calendar.shareToken && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium">Share Link</p>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={`${typeof window !== "undefined" ? window.location.origin : ""}/calendar?join=${calendar.shareToken}`}
+                        className="text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `${window.location.origin}/calendar?join=${calendar.shareToken}`
+                          );
+                          toast.success("Link copied to clipboard");
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -261,26 +264,20 @@ export function CalendarDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  onOpenChange(false);
-                  setCreatedCalendar(null);
-                }}
-                disabled={isSubmitting}
+                onClick={() => onOpenChange(false)}
               >
-                {createdCalendar ? "Close" : "Cancel"}
+                Cancel
               </Button>
-              {!createdCalendar && (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Calendar"
-                  )}
-                </Button>
-              )}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <LoadingSpinner className="mr-2 h-4 w-4" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
             </div>
           </form>
         </Form>

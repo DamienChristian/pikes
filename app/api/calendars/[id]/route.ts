@@ -6,7 +6,8 @@ import { getSession } from "@/app/lib/utils/session";
 
 /**
  * PATCH /api/calendars/[id]
- * Update a calendar (name, color, visibility)
+ * Update a calendar (name, color, visibility, sharing settings)
+ * Owner can update everything; members can only toggle their own visibility.
  */
 export async function PATCH(
   request: NextRequest,
@@ -26,10 +27,7 @@ export async function PATCH(
 
     await connectDB();
 
-    const calendar = await Calendar.findOne({
-      _id: id,
-      userId: session.userId,
-    });
+    const calendar = await Calendar.findById(id);
 
     if (!calendar) {
       return NextResponse.json(
@@ -38,16 +36,36 @@ export async function PATCH(
       );
     }
 
-    const updateData: Record<string, unknown> = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.color !== undefined) updateData.color = body.color;
-    if (body.isVisible !== undefined) updateData.isVisible = body.isVisible;
+    const isOwner = calendar.userId === session.userId;
+    const isMember = calendar.members?.some((m) => m.userId === session.userId);
 
-    const updated = await Calendar.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
+    if (!isOwner && !isMember) {
+      return NextResponse.json(
+        { success: false, error: "Calendar not found" },
+        { status: 404 }
+      );
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    if (isOwner) {
+      // Owner can update name, color, visibility, sharing settings
+      if (body.name !== undefined) updateData.name = body.name;
+      if (body.color !== undefined) updateData.color = body.color;
+      if (body.isVisible !== undefined) updateData.isVisible = body.isVisible;
+      if (body.isPublicJoinEnabled !== undefined)
+        updateData.isPublicJoinEnabled = body.isPublicJoinEnabled;
+      if (body.defaultJoinRole !== undefined)
+        updateData.defaultJoinRole = body.defaultJoinRole;
+    } else {
+      // Members can only toggle their own visibility
+      if (body.isVisible !== undefined) updateData.isVisible = body.isVisible;
+    }
+
+    // Apply updates to the fetched document and save (triggers pre-save hook
+    // which auto-generates shareToken if missing)
+    Object.assign(calendar, updateData);
+    const updated = await calendar.save();
 
     return NextResponse.json(
       {
@@ -81,7 +99,8 @@ export async function PATCH(
 
 /**
  * DELETE /api/calendars/[id]
- * Delete a calendar and all its events
+ * Owner: delete the calendar and all its events
+ * Member: leave the calendar (remove themselves from members)
  */
 export async function DELETE(
   request: NextRequest,
@@ -100,10 +119,7 @@ export async function DELETE(
 
     await connectDB();
 
-    const calendar = await Calendar.findOne({
-      _id: id,
-      userId: session.userId,
-    });
+    const calendar = await Calendar.findById(id);
 
     if (!calendar) {
       return NextResponse.json(
@@ -112,7 +128,28 @@ export async function DELETE(
       );
     }
 
-    // Prevent deleting the default calendar
+    const isOwner = calendar.userId === session.userId;
+    const isMember = calendar.members?.some((m) => m.userId === session.userId);
+
+    if (!isOwner && !isMember) {
+      return NextResponse.json(
+        { success: false, error: "Calendar not found" },
+        { status: 404 }
+      );
+    }
+
+    // Member leaving the calendar
+    if (!isOwner && isMember) {
+      await Calendar.findByIdAndUpdate(id, {
+        $pull: { members: { userId: session.userId } },
+      });
+      return NextResponse.json(
+        { success: true, message: "Left the calendar successfully" },
+        { status: 200 }
+      );
+    }
+
+    // Owner deleting
     if (calendar.isDefault) {
       return NextResponse.json(
         { success: false, error: "Cannot delete the default calendar." },
@@ -121,10 +158,7 @@ export async function DELETE(
     }
 
     // Delete all events in this calendar
-    await Event.deleteMany({
-      calendarId: id,
-      userId: session.userId,
-    });
+    await Event.deleteMany({ calendarId: id });
 
     // Delete the calendar
     await Calendar.findByIdAndDelete(id);

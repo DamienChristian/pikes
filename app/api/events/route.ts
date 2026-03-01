@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongodb";
 import Event from "@/app/lib/db/models/Event";
+import Calendar from "@/app/lib/db/models/Calendar";
 import { getSession } from "@/app/lib/utils/session";
 import {
   createEventSchema,
@@ -40,10 +41,24 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    // Build query
-    const query: Record<string, unknown> = {
-      userId: session.userId,
-    };
+    // Find calendar IDs the user has access to (own + shared)
+    const [ownCalendars, sharedCalendars] = await Promise.all([
+      Calendar.find({ userId: session.userId }).select("_id").lean(),
+      Calendar.find({ "members.userId": session.userId }).select("_id").lean(),
+    ]);
+    const accessibleCalendarIds = [
+      ...ownCalendars.map((c) => c._id.toString()),
+      ...sharedCalendars.map((c) => c._id.toString()),
+    ];
+
+    // Build query: own events OR events in any accessible calendar
+    const orConditions: Record<string, unknown>[] = [
+      { userId: session.userId },
+    ];
+    if (accessibleCalendarIds.length > 0) {
+      orConditions.push({ calendarId: { $in: accessibleCalendarIds } });
+    }
+    const query: Record<string, unknown> = { $or: orConditions };
 
     // Add date range filter if provided
     if (start && end) {
@@ -183,6 +198,28 @@ export async function POST(request: NextRequest) {
     const validatedData = createEventSchema.parse(body);
 
     await connectDB();
+
+    // If creating on a calendar the user doesn't own, verify editor access
+    if (validatedData.calendarId) {
+      const targetCalendar = await Calendar.findById(
+        validatedData.calendarId
+      ).lean();
+      if (targetCalendar && targetCalendar.userId !== session.userId) {
+        const member = targetCalendar.members?.find(
+          (m) => m.userId === session.userId
+        );
+        if (!member || member.role !== "editor") {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "You do not have permission to create events on this calendar.",
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     // Create event
     const event = await Event.create({

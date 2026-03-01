@@ -1,8 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongodb";
 import Event from "@/app/lib/db/models/Event";
+import Calendar from "@/app/lib/db/models/Calendar";
 import { getSession } from "@/app/lib/utils/session";
 import { updateEventSchema } from "@/app/lib/validations/event";
+
+/**
+ * Check if user has access to an event.
+ * Returns "owner" | "editor" | "viewer" | null.
+ */
+async function getEventAccess(
+  eventId: string,
+  userId: string
+): Promise<{ event: Record<string, unknown> | null; access: string | null }> {
+  const event = await Event.findById(eventId).lean();
+  if (!event) return { event: null, access: null };
+
+  // Owner of the event
+  if (event.userId === userId) return { event, access: "owner" };
+
+  // Check via shared calendar
+  if (event.calendarId) {
+    const cal = await Calendar.findById(event.calendarId).lean();
+    if (cal) {
+      const member = cal.members?.find((m) => m.userId === userId);
+      if (member) return { event, access: member.role };
+    }
+  }
+
+  return { event: null, access: null };
+}
 
 /**
  * GET /api/events/[id]
@@ -13,7 +40,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verify authentication
     const session = await getSession();
     if (!session) {
       return NextResponse.json(
@@ -23,16 +49,11 @@ export async function GET(
     }
 
     const { id } = await params;
-
     await connectDB();
 
-    // Find event
-    const event = await Event.findOne({
-      _id: id,
-      userId: session.userId,
-    }).lean();
+    const { event, access } = await getEventAccess(id, session.userId);
 
-    if (!event) {
+    if (!event || !access) {
       return NextResponse.json(
         { success: false, error: "Event not found" },
         { status: 404 }
@@ -113,16 +134,27 @@ export async function PATCH(
 
     await connectDB();
 
-    // Find and verify ownership
-    const existingEvent = await Event.findOne({
-      _id: id,
-      userId: session.userId,
-    });
+    // Find and verify access (owner or editor on shared calendar)
+    const { event: existingEvent, access } = await getEventAccess(
+      id,
+      session.userId
+    );
 
-    if (!existingEvent) {
+    if (!existingEvent || !access) {
       return NextResponse.json(
         { success: false, error: "Event not found" },
         { status: 404 }
+      );
+    }
+
+    // Viewers cannot edit
+    if (access === "viewer") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You do not have permission to edit this event.",
+        },
+        { status: 403 }
       );
     }
 
@@ -287,27 +319,39 @@ export async function DELETE(
 
     await connectDB();
 
-    // Find and verify ownership
-    const event = await Event.findOne({
-      _id: id,
-      userId: session.userId,
-    });
+    // Find and verify access (owner or editor on shared calendar)
+    const { event: existingEvent, access } = await getEventAccess(
+      id,
+      session.userId
+    );
 
-    if (!event) {
+    if (!existingEvent || !access) {
       return NextResponse.json(
         { success: false, error: "Event not found" },
         { status: 404 }
       );
     }
 
+    // Viewers cannot delete
+    if (access === "viewer") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You do not have permission to delete this event.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const event = await Event.findById(id);
+
     // Delete event
     await Event.findByIdAndDelete(id);
 
     // If this is a recurring parent, delete all child instances
-    if (event.isRecurring) {
+    if (event?.isRecurring) {
       await Event.deleteMany({
         parentEventId: id,
-        userId: session.userId,
       });
     }
 

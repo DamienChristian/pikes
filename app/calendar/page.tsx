@@ -10,6 +10,10 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Settings,
+  Share2,
+  LogOut,
+  Users,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { CalendarMonthView } from "@/app/components/calendar/CalendarMonthView";
@@ -20,7 +24,9 @@ import { EventDetailDialog } from "@/app/components/calendar/EventDetailDialog";
 import { MiniCalendar } from "@/app/components/calendar/MiniCalendar";
 import { ImportExportDialog } from "@/app/components/calendar/ImportExportDialog";
 import { CalendarDialog } from "@/app/components/calendar/CalendarDialog";
-import { CalendarEvent } from "@/app/types";
+import { CalendarSettingsDialog } from "@/app/components/calendar/CalendarSettingsDialog";
+import { ShareCalendarDialog } from "@/app/components/calendar/ShareCalendarDialog";
+import { CalendarEvent, UserCalendar } from "@/app/types";
 import { toast } from "sonner";
 import { startOfDay } from "date-fns";
 import { useAppDispatch, useAppSelector } from "@/app/lib/store/hooks";
@@ -50,6 +56,11 @@ export default function CalendarPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [importExportDialogOpen, setImportExportDialogOpen] = useState(false);
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [activeCalendar, setActiveCalendar] = useState<UserCalendar | null>(
+    null
+  );
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
@@ -58,6 +69,35 @@ export default function CalendarPage() {
   useEffect(() => {
     dispatch(fetchEvents());
     dispatch(fetchCalendars());
+  }, [dispatch]);
+
+  // Handle ?join=<token> query param for join-by-link
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinToken = params.get("join");
+    if (!joinToken) return;
+
+    // Clean the URL immediately
+    window.history.replaceState({}, "", window.location.pathname);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/calendars/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: joinToken }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to join calendar");
+        toast.success(data.message || "Joined calendar");
+        dispatch(fetchCalendars());
+        dispatch(fetchEvents());
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to join calendar"
+        );
+      }
+    })();
   }, [dispatch]);
 
   const handleCreateEvent = (date: Date, endDate?: Date) => {
@@ -122,7 +162,7 @@ export default function CalendarPage() {
     }
   };
 
-  // Delete a calendar
+  // Delete a calendar (or leave shared calendar)
   const handleDeleteCalendar = async (calendarId: string) => {
     const cal = calendars.find((c) => c.id === calendarId);
     if (!cal) return;
@@ -132,16 +172,39 @@ export default function CalendarPage() {
       return;
     }
 
-    if (!confirm(`Delete "${cal.name}" and all its events?`)) return;
+    const isOwner = cal.role === "owner";
+    const message = isOwner
+      ? `Delete "${cal.name}" and all its events?`
+      : `Leave "${cal.name}"? You will lose access to this shared calendar.`;
+
+    if (!confirm(message)) return;
 
     try {
       await dispatch(deleteCalendarThunk(calendarId)).unwrap();
-      toast.success(`Calendar "${cal.name}" deleted`);
+      toast.success(
+        isOwner ? `Calendar "${cal.name}" deleted` : `Left "${cal.name}"`
+      );
       dispatch(fetchEvents());
     } catch {
-      toast.error("Failed to delete calendar");
+      toast.error(
+        isOwner ? "Failed to delete calendar" : "Failed to leave calendar"
+      );
     }
   };
+
+  const handleOpenSettings = (cal: UserCalendar) => {
+    setActiveCalendar(cal);
+    setSettingsDialogOpen(true);
+  };
+
+  const handleOpenShare = (cal: UserCalendar) => {
+    setActiveCalendar(cal);
+    setShareDialogOpen(true);
+  };
+
+  // Split calendars into own vs shared
+  const ownCalendars = calendars.filter((c) => c.role === "owner");
+  const sharedCalendars = calendars.filter((c) => c.role !== "owner");
 
   // Filter events by visible calendars
   const visibleCalendarIds = new Set(
@@ -214,7 +277,7 @@ export default function CalendarPage() {
               </Button>
             </div>
             <div className="space-y-1">
-              {calendars.map((cal) => (
+              {ownCalendars.map((cal) => (
                 <div
                   key={cal.id}
                   className="flex items-center gap-2 group rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors"
@@ -233,6 +296,9 @@ export default function CalendarPage() {
                       }}
                     />
                     <span className="text-sm truncate">{cal.name}</span>
+                    {cal.members && cal.members.length > 0 && (
+                      <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    )}
                   </button>
                   <button onClick={() => handleToggleCalendar(cal.id)}>
                     {cal.isVisible ? (
@@ -242,17 +308,92 @@ export default function CalendarPage() {
                     )}
                   </button>
                   {!cal.isDefault && (
-                    <button
-                      onClick={() => handleDeleteCalendar(cal.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleOpenSettings(cal)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        title="Settings"
+                      >
+                        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenShare(cal)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        title="Share"
+                      >
+                        <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCalendar(cal.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </button>
+                    </>
                   )}
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Shared Calendars */}
+          {sharedCalendars.length > 0 && (
+            <div className="lg:block bg-card border rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Shared with me</h3>
+              <div className="space-y-1">
+                {sharedCalendars.map((cal) => (
+                  <div
+                    key={cal.id}
+                    className="flex items-center gap-2 group rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors"
+                  >
+                    <button
+                      onClick={() => handleToggleCalendar(cal.id)}
+                      className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                    >
+                      <span
+                        className="w-3 h-3 rounded-sm flex-shrink-0 border"
+                        style={{
+                          backgroundColor: cal.isVisible
+                            ? cal.color
+                            : "transparent",
+                          borderColor: cal.color,
+                        }}
+                      />
+                      <span className="text-sm truncate">{cal.name}</span>
+                      <span className="text-[10px] text-muted-foreground flex-shrink-0 capitalize">
+                        {cal.role}
+                      </span>
+                    </button>
+                    <button onClick={() => handleToggleCalendar(cal.id)}>
+                      {cal.isVisible ? (
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                      ) : (
+                        <EyeOff className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCalendar(cal.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      title="Leave calendar"
+                    >
+                      <LogOut className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {sharedCalendars.some((c) => c.ownerName) && (
+                <p className="text-[10px] text-muted-foreground">
+                  Shared by:{" "}
+                  {[
+                    ...new Set(
+                      sharedCalendars.map((c) => c.ownerName).filter(Boolean)
+                    ),
+                  ].join(", ")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Main Calendar Area */}
@@ -379,6 +520,20 @@ export default function CalendarPage() {
       <CalendarDialog
         open={calendarDialogOpen}
         onOpenChange={setCalendarDialogOpen}
+      />
+
+      {/* Calendar Settings Dialog */}
+      <CalendarSettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        calendar={activeCalendar}
+      />
+
+      {/* Share Calendar Dialog */}
+      <ShareCalendarDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        calendar={activeCalendar}
       />
     </div>
   );

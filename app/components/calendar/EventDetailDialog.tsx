@@ -84,6 +84,15 @@ export function EventDetailDialog({
 
   if (!event) return null;
 
+  // Determine if the user can edit/delete this event based on calendar role
+  const eventCalendar = event.calendarId
+    ? calendars.find((c) => c.id === event.calendarId)
+    : undefined;
+  const canEdit =
+    !eventCalendar ||
+    eventCalendar.role === "owner" ||
+    eventCalendar.role === "editor";
+
   const startDate =
     typeof event.startDate === "string"
       ? parseISO(event.startDate)
@@ -259,32 +268,38 @@ export function EventDetailDialog({
 
         {/* Actions */}
         <div className="flex justify-between gap-2 pt-4 border-t">
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </>
-            )}
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          ) : (
+            <div />
+          )}
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button onClick={onEdit}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
+            {canEdit && (
+              <Button onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

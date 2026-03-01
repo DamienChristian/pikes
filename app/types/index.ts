@@ -1,4 +1,18 @@
 /**
+ * Calendar Member Types
+ */
+export interface CalendarMember {
+  userId: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  role: "viewer" | "editor";
+  addedAt: Date;
+}
+
+/**
  * Calendar (collection) Types
  */
 export interface UserCalendar {
@@ -10,6 +24,15 @@ export interface UserCalendar {
   isDefault: boolean;
   source: "local" | "imported";
   sourceUrl?: string;
+  // Sharing
+  members: CalendarMember[];
+  isPublicJoinEnabled: boolean;
+  defaultJoinRole: "viewer" | "editor";
+  shareToken?: string;
+  /** Role of the current user: "owner" for calendar owner, or the member's role */
+  role: "owner" | "viewer" | "editor";
+  /** Owner info (populated for shared calendars) */
+  ownerName?: string;
   createdAt: Date;
   updatedAt: Date;
 }

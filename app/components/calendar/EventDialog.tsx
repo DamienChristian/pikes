@@ -108,6 +108,10 @@ export function EventDialog({
   onSuccess,
 }: EventDialogProps) {
   const calendars = useAppSelector((state) => state.calendars.items);
+  // Only calendars the user can create events on (owner or editor)
+  const writableCalendars = calendars.filter(
+    (c) => c.role === "owner" || c.role === "editor"
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategoryInput, setShowCategoryInput] = useState(false);
@@ -545,7 +549,7 @@ export function EventDialog({
             />
 
             {/* Calendar Picker */}
-            {calendars && calendars.length > 0 && (
+            {writableCalendars && writableCalendars.length > 0 && (
               <FormField
                 control={form.control}
                 name="calendarId"
@@ -554,7 +558,7 @@ export function EventDialog({
                     <FormLabel>Calendar</FormLabel>
                     <FormControl>
                       <div className="flex flex-wrap gap-2">
-                        {calendars.map((cal) => (
+                        {writableCalendars.map((cal) => (
                           <Button
                             key={cal.id}
                             type="button"

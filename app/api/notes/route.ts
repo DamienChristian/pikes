@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import connectDB from "@/app/lib/db/mongodb";
 import Note from "@/app/lib/db/models/Note";
+import Event from "@/app/lib/db/models/Event";
+import Calendar from "@/app/lib/db/models/Calendar";
 import { getSession } from "@/app/lib/utils/session";
 import { createNoteSchema } from "@/app/lib/validations/note";
 
@@ -34,8 +37,27 @@ export async function GET(request: NextRequest) {
       query.category = category;
     }
 
+    // When fetching notes linked to an event, check if the user has access
+    // to the event's calendar (via sharing). If so, show all notes for that
+    // event regardless of who created them.
     if (linkedEventId) {
       query.linkedEventId = linkedEventId;
+
+      const event = await Event.findById(linkedEventId).lean();
+      if (event && event.calendarId) {
+        const calendar = await Calendar.findById(event.calendarId).lean();
+        if (calendar) {
+          const isOwner = calendar.userId.toString() === session.userId;
+          const isMember = calendar.members?.some(
+            (m: { userId: mongoose.Types.ObjectId }) =>
+              m.userId.toString() === session.userId
+          );
+          if (isOwner || isMember) {
+            // User has access to this calendar — show all notes for the event
+            delete query.userId;
+          }
+        }
+      }
     }
 
     const notes = await Note.find(query)

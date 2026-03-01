@@ -27,7 +27,12 @@ export const fetchCalendars = createAsyncThunk(
 
 export const createCalendar = createAsyncThunk(
   "calendars/createCalendar",
-  async (payload: { name: string; color: string }) => {
+  async (payload: {
+    name: string;
+    color: string;
+    isPublicJoinEnabled: boolean;
+    defaultJoinRole: "viewer" | "editor";
+  }) => {
     const response = await fetch("/api/calendars", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
