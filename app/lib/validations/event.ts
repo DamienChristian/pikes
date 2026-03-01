@@ -43,6 +43,7 @@ export const createEventSchema = z
     recurrenceDayOfMonth: z.number().int().min(1).max(31).optional(),
     recurrenceEndDate: z.coerce.date().optional(),
     recurrenceCount: z.number().int().positive().optional(),
+    calendarId: z.string().optional(),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "End date must be after or equal to start date",
@@ -87,6 +88,7 @@ export const updateEventSchema = z
     recurrenceDayOfMonth: z.number().int().min(1).max(31).optional(),
     recurrenceEndDate: z.coerce.date().optional(),
     recurrenceCount: z.number().int().positive().optional(),
+    calendarId: z.string().optional(),
   })
   .refine(
     (data) => {

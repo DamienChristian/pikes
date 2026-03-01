@@ -12,6 +12,7 @@ import {
 } from "@/app/components/ui/dialog";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { UserCalendar } from "@/app/types";
 
 interface EventDetailDialogProps {
   open: boolean;
@@ -25,7 +26,9 @@ interface EventDetailDialogProps {
     allDay: boolean;
     color?: string;
     location?: string;
+    calendarId?: string;
   } | null;
+  calendars?: UserCalendar[];
   onEdit?: () => void;
   onDelete?: () => void;
 }
@@ -34,6 +37,7 @@ export function EventDetailDialog({
   open,
   onOpenChange,
   event,
+  calendars,
   onEdit,
   onDelete,
 }: EventDetailDialogProps) {
@@ -196,6 +200,31 @@ export function EventDetailDialog({
               </div>
             </div>
           )}
+
+          {/* Calendar */}
+          {event.calendarId &&
+            calendars &&
+            (() => {
+              const cal = calendars.find((c) => c.id === event.calendarId);
+              if (!cal) return null;
+              return (
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Calendar</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: cal.color }}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {cal.name}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
           {/* Description */}
           {event.description && (

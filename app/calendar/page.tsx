@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Calendar, CalendarDays, CalendarClock, Download } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Calendar,
+  CalendarDays,
+  CalendarClock,
+  Download,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { CalendarMonthView } from "@/app/components/calendar/CalendarMonthView";
 import { CalendarWeekView } from "@/app/components/calendar/CalendarWeekView";
@@ -10,7 +19,7 @@ import { EventDialog } from "@/app/components/calendar/EventDialog";
 import { EventDetailDialog } from "@/app/components/calendar/EventDetailDialog";
 import { MiniCalendar } from "@/app/components/calendar/MiniCalendar";
 import { ImportExportDialog } from "@/app/components/calendar/ImportExportDialog";
-import { CalendarEvent } from "@/app/types";
+import { CalendarEvent, UserCalendar } from "@/app/types";
 import { toast } from "sonner";
 import { startOfDay } from "date-fns";
 
@@ -18,6 +27,7 @@ type ViewMode = "month" | "week" | "day";
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [calendars, setCalendars] = useState<UserCalendar[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -31,6 +41,19 @@ export default function CalendarPage() {
     null
   );
   const [createDate, setCreateDate] = useState<Date | undefined>();
+
+  // Fetch calendars
+  const fetchCalendars = useCallback(async () => {
+    try {
+      const response = await fetch("/api/calendars");
+      if (response.ok) {
+        const data = await response.json();
+        setCalendars(data.data.calendars);
+      }
+    } catch (error) {
+      console.error("Failed to fetch calendars:", error);
+    }
+  }, []);
 
   // Fetch events
   const fetchEvents = async () => {
@@ -59,7 +82,8 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+    fetchCalendars();
+  }, [fetchCalendars]);
 
   const handleCreateEvent = (date: Date, endDate?: Date) => {
     setCreateDate(date);
@@ -96,11 +120,80 @@ export default function CalendarPage() {
 
   const handleSuccess = () => {
     fetchEvents();
+    fetchCalendars();
     handleDialogClose();
   };
 
+  // Toggle calendar visibility
+  const handleToggleCalendar = async (calendarId: string) => {
+    const cal = calendars.find((c) => c.id === calendarId);
+    if (!cal) return;
+
+    // Optimistic update
+    setCalendars((prev) =>
+      prev.map((c) =>
+        c.id === calendarId ? { ...c, isVisible: !c.isVisible } : c
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/calendars/${calendarId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isVisible: !cal.isVisible }),
+      });
+      if (!response.ok) throw new Error("Failed to update");
+    } catch {
+      // Revert on error
+      setCalendars((prev) =>
+        prev.map((c) =>
+          c.id === calendarId ? { ...c, isVisible: cal.isVisible } : c
+        )
+      );
+      toast.error("Failed to update calendar visibility");
+    }
+  };
+
+  // Delete a calendar
+  const handleDeleteCalendar = async (calendarId: string) => {
+    const cal = calendars.find((c) => c.id === calendarId);
+    if (!cal) return;
+
+    if (cal.isDefault) {
+      toast.error("Cannot delete the default calendar");
+      return;
+    }
+
+    if (!confirm(`Delete "${cal.name}" and all its events?`)) return;
+
+    try {
+      const response = await fetch(`/api/calendars/${calendarId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete");
+      toast.success(`Calendar "${cal.name}" deleted`);
+      fetchCalendars();
+      fetchEvents();
+    } catch {
+      toast.error("Failed to delete calendar");
+    }
+  };
+
+  // Filter events by visible calendars
+  const visibleCalendarIds = new Set(
+    calendars.filter((c) => c.isVisible).map((c) => c.id)
+  );
+  const defaultCalendar = calendars.find((c) => c.isDefault);
+  const filteredEvents = events.filter((event) => {
+    if (!event.calendarId) {
+      // Events without a calendarId belong to the default calendar
+      return defaultCalendar ? defaultCalendar.isVisible : true;
+    }
+    return visibleCalendarIds.has(event.calendarId);
+  });
+
   // Get unique event dates for Mini Calendar highlighting
-  const eventDates = events.map((event) =>
+  const eventDates = filteredEvents.map((event) =>
     startOfDay(new Date(event.startDate))
   );
 
@@ -118,27 +211,71 @@ export default function CalendarPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="hidden lg:block bg-card border rounded-lg p-4 space-y-3">
+          <div className="lg:block bg-card border rounded-lg p-4 space-y-3">
             <h3 className="font-semibold text-sm">Quick Stats</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Events:</span>
                 <span className="font-medium">
-                  {events.filter((e) => e.type === "event").length}
+                  {filteredEvents.filter((e) => e.type === "event").length}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Tasks:</span>
                 <span className="font-medium">
-                  {events.filter((e) => e.type === "task").length}
+                  {filteredEvents.filter((e) => e.type === "task").length}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Completed:</span>
                 <span className="font-medium">
-                  {events.filter((e) => e.completed).length}
+                  {filteredEvents.filter((e) => e.completed).length}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* My Calendars */}
+          <div className="lg:block bg-card border rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-sm">My Calendars</h3>
+            <div className="space-y-1">
+              {calendars.map((cal) => (
+                <div
+                  key={cal.id}
+                  className="flex items-center gap-2 group rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors"
+                >
+                  <button
+                    onClick={() => handleToggleCalendar(cal.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-sm flex-shrink-0 border"
+                      style={{
+                        backgroundColor: cal.isVisible
+                          ? cal.color
+                          : "transparent",
+                        borderColor: cal.color,
+                      }}
+                    />
+                    <span className="text-sm truncate">{cal.name}</span>
+                  </button>
+                  <button onClick={() => handleToggleCalendar(cal.id)}>
+                    {cal.isVisible ? (
+                      <Eye className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                    ) : (
+                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </button>
+                  {!cal.isDefault && (
+                    <button
+                      onClick={() => handleDeleteCalendar(cal.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -191,7 +328,7 @@ export default function CalendarPage() {
           {/* Calendar Views */}
           {viewMode === "month" ? (
             <CalendarMonthView
-              events={events}
+              events={filteredEvents}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onEventClick={handleEventClick}
@@ -200,7 +337,7 @@ export default function CalendarPage() {
             />
           ) : viewMode === "week" ? (
             <CalendarWeekView
-              events={events}
+              events={filteredEvents}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onEventClick={handleEventClick}
@@ -209,7 +346,7 @@ export default function CalendarPage() {
             />
           ) : (
             <CalendarDayView
-              events={events}
+              events={filteredEvents}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onEventClick={handleEventClick}
@@ -233,6 +370,7 @@ export default function CalendarPage() {
             ? selectedEvent
             : undefined
         }
+        calendars={calendars}
         onSuccess={handleSuccess}
       />
 
@@ -241,6 +379,7 @@ export default function CalendarPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         event={selectedEvent || undefined}
+        calendars={calendars}
         onSuccess={handleSuccess}
       />
 
@@ -249,6 +388,7 @@ export default function CalendarPage() {
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         event={selectedEvent}
+        calendars={calendars}
         onEdit={handleEditEvent}
         onDelete={handleSuccess}
       />
@@ -257,7 +397,10 @@ export default function CalendarPage() {
       <ImportExportDialog
         isOpen={importExportDialogOpen}
         onClose={() => setImportExportDialogOpen(false)}
-        onImportSuccess={fetchEvents}
+        onImportSuccess={() => {
+          fetchEvents();
+          fetchCalendars();
+        }}
       />
     </div>
   );

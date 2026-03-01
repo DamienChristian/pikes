@@ -32,6 +32,7 @@ import {
 import { Input } from "@/app/components/ui/input";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { toast } from "sonner";
+import { UserCalendar } from "@/app/types";
 
 interface EventDialogProps {
   open: boolean;
@@ -51,6 +52,7 @@ interface EventDialogProps {
     deadline?: string | Date;
     category?: string;
     priority?: "low" | "medium" | "high";
+    calendarId?: string;
     isRecurring?: boolean;
     recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
     recurrenceInterval?: number;
@@ -58,6 +60,7 @@ interface EventDialogProps {
     recurrenceEndDate?: string | Date;
     recurrenceCount?: number;
   };
+  calendars?: UserCalendar[];
   onSuccess?: () => void;
 }
 
@@ -85,6 +88,7 @@ type EventFormData = {
   deadline?: Date;
   category?: string;
   priority?: "low" | "medium" | "high";
+  calendarId?: string;
   isRecurring?: boolean;
   recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
   recurrenceInterval?: number;
@@ -98,6 +102,7 @@ export function EventDialog({
   onOpenChange,
   defaultDate,
   event,
+  calendars,
   onSuccess,
 }: EventDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,6 +170,8 @@ export function EventDialog({
       completed: false,
       deadline: defaultEndDate,
       category: "",
+      calendarId:
+        event?.calendarId || calendars?.find((c) => c.isDefault)?.id || "",
     },
   });
 
@@ -274,6 +281,8 @@ export function EventDialog({
         deadline: eventDeadline,
         category: event?.category || "",
         priority: event?.priority || "medium",
+        calendarId:
+          event?.calendarId || calendars?.find((c) => c.isDefault)?.id || "",
         isRecurring: event?.isRecurring || false,
         recurrencePattern: event?.recurrencePattern || "daily",
         recurrenceInterval: event?.recurrenceInterval || 1,
@@ -341,6 +350,10 @@ export function EventDialog({
         color: data.color,
         location: data.location || "",
       };
+
+      if (data.calendarId) {
+        payload.calendarId = data.calendarId;
+      }
 
       if (data.category) {
         payload.category = data.category;
@@ -527,6 +540,43 @@ export function EventDialog({
                 </FormItem>
               )}
             />
+
+            {/* Calendar Picker */}
+            {calendars && calendars.length > 0 && (
+              <FormField
+                control={form.control}
+                name="calendarId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Calendar</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2">
+                        {calendars.map((cal) => (
+                          <Button
+                            key={cal.id}
+                            type="button"
+                            variant={
+                              field.value === cal.id ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => field.onChange(cal.id)}
+                            disabled={isSubmitting}
+                            className="gap-2"
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: cal.color }}
+                            />
+                            {cal.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Title */}
             <FormField

@@ -66,6 +66,7 @@ export async function GET(
             recurrenceCount: event.recurrenceCount,
             parentEventId: event.parentEventId,
             originalDate: event.originalDate,
+            calendarId: event.calendarId,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },
@@ -164,6 +165,8 @@ export async function PATCH(
       updateData.recurrenceEndDate = validatedData.recurrenceEndDate;
     if (validatedData.recurrenceCount !== undefined)
       updateData.recurrenceCount = validatedData.recurrenceCount;
+    if (validatedData.calendarId !== undefined)
+      updateData.calendarId = validatedData.calendarId;
 
     // If recurrence is being turned off, clear all recurrence fields
     const unsetData: Record<string, 1> = {};
@@ -222,6 +225,7 @@ export async function PATCH(
             recurrenceCount: updatedEvent!.recurrenceCount,
             parentEventId: updatedEvent!.parentEventId,
             originalDate: updatedEvent!.originalDate,
+            calendarId: updatedEvent!.calendarId,
             createdAt: updatedEvent!.createdAt,
             updatedAt: updatedEvent!.updatedAt,
           },

@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
       recurrenceCount: event.recurrenceCount,
       parentEventId: event.parentEventId,
       originalDate: event.originalDate,
+      calendarId: event.calendarId,
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
     }));
@@ -216,6 +217,7 @@ export async function POST(request: NextRequest) {
             recurrenceCount: event.recurrenceCount,
             parentEventId: event.parentEventId,
             originalDate: event.originalDate,
+            calendarId: event.calendarId,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },

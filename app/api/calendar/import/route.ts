@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongodb";
 import Event from "@/app/lib/db/models/Event";
+import Calendar from "@/app/lib/db/models/Calendar";
 import { getSession } from "@/app/lib/utils/session";
-import { parseICS, ParsedICSEvent } from "@/app/lib/utils/ics";
+import { parseICSWithMeta, ParsedICSEvent } from "@/app/lib/utils/ics";
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,8 +69,11 @@ export async function POST(request: NextRequest) {
 
     // Parse ICS file
     let parsedEvents: ParsedICSEvent[];
+    let calendarName: string | undefined;
     try {
-      parsedEvents = parseICS(contentToParse);
+      const result = parseICSWithMeta(contentToParse);
+      parsedEvents = result.events;
+      calendarName = result.calendarName;
     } catch (error) {
       console.error("ICS parsing error:", error);
       return NextResponse.json(
@@ -88,10 +92,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine calendar name
+    const importCalendarName = calendarName || "Imported Calendar";
+
+    // Check if we already have a calendar for this import (deduplication)
+    let importCalendar = null;
+
+    if (icsUrl) {
+      // For URL imports, match by sourceUrl
+      const normalizedUrl = icsUrl.replace(/^webcal:\/\//i, "https://");
+      importCalendar = await Calendar.findOne({
+        userId: session.userId,
+        source: "imported",
+        sourceUrl: { $in: [icsUrl, normalizedUrl] },
+      });
+    }
+
+    // Always try matching by resolved name as fallback (handles file imports
+    // and URL imports where sourceUrl wasn't stored previously)
+    if (!importCalendar) {
+      importCalendar = await Calendar.findOne({
+        userId: session.userId,
+        source: "imported",
+        name: importCalendarName,
+      });
+    }
+
+    if (importCalendar) {
+      // Calendar already exists — delete its old events and re-import
+      await Event.deleteMany({
+        calendarId: importCalendar._id.toString(),
+        userId: session.userId,
+      });
+
+      // Update calendar name in case it changed
+      importCalendar.name = importCalendarName;
+      if (icsUrl) importCalendar.sourceUrl = icsUrl;
+      await importCalendar.save();
+    } else {
+      // Create a new calendar for this import
+      importCalendar = await Calendar.create({
+        userId: session.userId,
+        name: importCalendarName,
+        color: "#6366F1", // Indigo default for imports
+        isVisible: true,
+        isDefault: false,
+        source: "imported",
+        sourceUrl: icsUrl || undefined,
+      });
+    }
+
+    // Clean up legacy events that were imported before the calendar feature
+    // was added (they have no calendarId). Match by title to find them.
+    const importedTitles = parsedEvents.map((e) => e.title);
+    await Event.deleteMany({
+      userId: session.userId,
+      title: { $in: importedTitles },
+      calendarId: null, // matches both null and non-existent field
+    });
+
     // Convert parsed events to our format and insert
     const now = new Date();
     const eventsToInsert = parsedEvents.map((event) => ({
       userId: session.userId,
+      calendarId: importCalendar._id.toString(),
       title: event.title,
       description: event.description || "",
       startDate: event.startDate,
@@ -116,8 +180,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully imported ${result.length} events`,
+      message: `Successfully imported ${result.length} events into "${importCalendarName}"`,
       count: result.length,
+      calendarId: importCalendar._id.toString(),
+      calendarName: importCalendarName,
     });
   } catch (error) {
     console.error("Import error:", error);

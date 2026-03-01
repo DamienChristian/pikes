@@ -1,4 +1,20 @@
 /**
+ * Calendar (collection) Types
+ */
+export interface UserCalendar {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+  isVisible: boolean;
+  isDefault: boolean;
+  source: "local" | "imported";
+  sourceUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
  * Calendar Event Types
  */
 export type EventType = "event" | "task";
@@ -13,6 +29,7 @@ export interface CalendarEvent {
   color?: string;
   location?: string;
   userId: string;
+  calendarId?: string;
   createdAt: Date;
   updatedAt: Date;
   type: EventType;
@@ -44,6 +61,7 @@ export interface CreateEventInput {
   completed?: boolean;
   category?: string;
   priority?: "low" | "medium" | "high";
+  calendarId?: string;
   isRecurring?: boolean;
   recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
   recurrenceInterval?: number;

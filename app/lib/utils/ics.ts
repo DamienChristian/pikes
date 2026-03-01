@@ -292,12 +292,23 @@ function parseRRule(rrule: string): ParsedICSEvent["recurrence"] | undefined {
 /**
  * Parse ICS file content
  */
+export interface ParsedICSResult {
+  calendarName?: string;
+  events: ParsedICSEvent[];
+}
+
 export function parseICS(icsContent: string): ParsedICSEvent[] {
+  const result = parseICSWithMeta(icsContent);
+  return result.events;
+}
+
+export function parseICSWithMeta(icsContent: string): ParsedICSResult {
   const events: ParsedICSEvent[] = [];
   const lines = icsContent.split(/\r?\n/);
 
   let currentEvent: Partial<ParsedICSEvent> | null = null;
   let isAllDay = false;
+  let calendarName: string | undefined;
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
@@ -311,6 +322,8 @@ export function parseICS(icsContent: string): ParsedICSEvent[] {
     if (line === "BEGIN:VEVENT") {
       currentEvent = { allDay: false };
       isAllDay = false;
+    } else if (!currentEvent && line.startsWith("X-WR-CALNAME:")) {
+      calendarName = line.substring("X-WR-CALNAME:".length).trim();
     } else if (line === "END:VEVENT" && currentEvent) {
       if (
         currentEvent.title &&
@@ -363,7 +376,7 @@ export function parseICS(icsContent: string): ParsedICSEvent[] {
     }
   }
 
-  return events;
+  return { calendarName, events };
 }
 
 /**

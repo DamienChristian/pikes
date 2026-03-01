@@ -95,6 +95,10 @@ const EventSchema = new Schema<IEvent>(
     originalDate: {
       type: Date, // For edited recurring instances
     },
+    calendarId: {
+      type: String, // Links to Calendar collection
+      index: true,
+    },
   },
   {
     timestamps: true,
