@@ -84,7 +84,6 @@ export async function GET(request: NextRequest) {
 
     // Format events for response
     const formattedEvents = events.map((event) => {
-      const isEventOwner = event.userId === session.userId;
       return {
         id: event._id.toString(),
         title: event.title,
@@ -134,18 +133,15 @@ export async function GET(request: NextRequest) {
     console.error("Get events error:", error);
 
     // Handle validation errors
-    if (
-      error &&
-      typeof error === "object" &&
-      "name" in error &&
-      error.name === "ZodError" &&
-      "errors" in error
-    ) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         {
           success: false,
           error: "Validation failed",
-          details: error.errors,
+          details:
+            "issues" in error
+              ? (error as unknown as { issues: unknown }).issues
+              : undefined,
         },
         { status: 400 }
       );
@@ -274,18 +270,15 @@ export async function POST(request: NextRequest) {
     console.error("Create event error:", error);
 
     // Handle validation errors
-    if (
-      error &&
-      typeof error === "object" &&
-      "name" in error &&
-      error.name === "ZodError" &&
-      "errors" in error
-    ) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         {
           success: false,
           error: "Validation failed",
-          details: error.errors,
+          details:
+            "issues" in error
+              ? (error as unknown as { issues: unknown }).issues
+              : undefined,
         },
         { status: 400 }
       );

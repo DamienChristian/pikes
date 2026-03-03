@@ -96,18 +96,15 @@ export async function POST(request: NextRequest) {
     console.error("Login error:", error);
 
     // Handle validation errors
-    if (
-      error &&
-      typeof error === "object" &&
-      "name" in error &&
-      error.name === "ZodError" &&
-      "errors" in error
-    ) {
+    if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         {
           success: false,
           error: "Validation failed",
-          details: error.errors,
+          details:
+            "issues" in error
+              ? (error as unknown as { issues: unknown }).issues
+              : undefined,
         },
         { status: 400 }
       );

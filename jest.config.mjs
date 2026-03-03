@@ -14,7 +14,7 @@ const config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
-  transformIgnorePatterns: ["node_modules/(?!(jose)/)"],
+  transformIgnorePatterns: ["node_modules/(?!(jose|nanoid)/)"],
   collectCoverageFrom: [
     "app/**/*.{js,jsx,ts,tsx}",
     "!app/**/*.d.ts",
@@ -23,6 +23,16 @@ const config = {
     "!app/layout.tsx",
     "!app/**/layout.tsx",
   ],
+  // Enforce minimum coverage thresholds.
+  // Increase these as test coverage improves.
+  coverageThreshold: {
+    global: {
+      lines: 40,
+      functions: 35,
+      branches: 30,
+      statements: 40,
+    },
+  },
   testMatch: [
     "<rootDir>/tests/unit/**/*.test.{js,jsx,ts,tsx}",
     "<rootDir>/tests/integration/**/*.test.{js,jsx,ts,tsx}",

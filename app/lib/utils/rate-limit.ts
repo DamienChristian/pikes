@@ -13,6 +13,7 @@ interface RateLimitStore {
 const store: RateLimitStore = {};
 
 // Cleanup old entries every 5 minutes
+// .unref() prevents this timer from keeping the Node.js process (or Jest) alive
 setInterval(
   () => {
     const now = Date.now();
@@ -23,7 +24,7 @@ setInterval(
     });
   },
   5 * 60 * 1000
-);
+).unref();
 
 export interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds

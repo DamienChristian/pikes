@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { User, LogOut, Calendar, ListTodo, FileText, Menu } from "lucide-react";
+import {
+  User,
+  LogOut,
+  Calendar,
+  ListTodo,
+  FileText,
+  Menu,
+  BarChart3,
+} from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { ThemeToggle } from "@/app/components/ui/theme-toggle";
 import Image from "next/image";
@@ -89,6 +97,12 @@ export function Header({ session }: HeaderProps) {
                 <Link href="/notes">
                   <FileText className="h-4 w-4 mr-2" />
                   Notes
+                </Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/analytics">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
                 </Link>
               </Button>
             </>
@@ -181,6 +195,15 @@ export function Header({ session }: HeaderProps) {
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       Notes
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link
+                      href="/analytics"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Analytics
                     </Link>
                   </Button>
                   <div className="border-t pt-4">
